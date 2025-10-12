@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Study Focus App - Advanced Eye Tracking Study Assistant
 Compatible with Python 3.8 - 3.12
@@ -15,6 +16,14 @@ current_dir = Path(__file__).parent
 src_dir = current_dir / "src"
 sys.path.insert(0, str(src_dir))
 
+# Fix encoding for Windows console
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+
 def check_python_version():
     """
     Check Python version compatibility.
@@ -28,11 +37,11 @@ def check_python_version():
         print("Please upgrade to Python 3.8-3.12 for compatibility")
         return False
     elif version >= (3, 13):
-        print("⚠️  WARNING: Python 3.13+ is not yet supported")
-        print("MediaPipe currently supports Python 3.8-3.12 only")
-        print("Please use Python 3.12 or earlier for full functionality")
-        return False
-    elif version >= (3, 8) and version <= (3, 12):
+        print("⚠️  WARNING: Python 3.13+ is not officially supported")
+        print("MediaPipe may have compatibility issues with Python 3.13+")
+        print("The app will attempt to run, but camera features may not work")
+        return True  # Allow running for testing UI
+    elif version.major == 3 and 8 <= version.minor <= 12:
         print("✅ COMPATIBLE: Python version supported")
         return True
 
@@ -132,10 +141,10 @@ def main():
     try:
         print("\n🚀 Loading Study Focus App...")
 
-        # Import and run GUI
-        from gui_manager import StudyFocusGUI
+        # Import and run Modern GUI
+        from gui_manager_modern import ModernStudyFocusGUI
 
-        app = StudyFocusGUI()
+        app = ModernStudyFocusGUI()
         app.run()
 
     except ImportError as e:

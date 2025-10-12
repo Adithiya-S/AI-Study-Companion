@@ -229,22 +229,90 @@ class ConfigManager:
         self.save_config()
         
     def get_theme_colors(self) -> Dict[str, str]:
-        """Get theme color configuration."""
+        """Get theme color configuration with warm neutral colors."""
         if self.config["theme"]["mode"] == "dark":
+            # Dark mode with warm neutrals
             return {
-                "bg": "#2b2b2b",
-                "fg": "#ffffff", 
-                "button_bg": "#404040",
-                "button_fg": "#ffffff",
-                "frame_bg": "#2b2b2b"
+                # Backgrounds
+                "bg": "#2D2520",              # Dark warm brown
+                "bg_secondary": "#3A3027",     # Lighter dark brown
+                "frame_bg": "#342B24",         # Frame background
+                "card_bg": "#3F362E",          # Card/panel background
+                
+                # Foregrounds
+                "fg": "#F5EBE0",              # Warm off-white text
+                "fg_secondary": "#D4C5B9",     # Secondary text
+                "fg_muted": "#9A8A7B",         # Muted text
+                
+                # Accents
+                "accent_primary": "#D4A574",   # Warm tan/gold
+                "accent_secondary": "#B8956A", # Darker tan
+                "accent_success": "#8C9F77",   # Muted olive green
+                "accent_warning": "#D4A574",   # Warm amber
+                "accent_danger": "#B07D7D",    # Muted red
+                
+                # Interactive elements
+                "button_bg": "#4A3F35",        # Button background
+                "button_fg": "#F5EBE0",        # Button text
+                "button_hover": "#5A4F45",     # Button hover
+                "button_active": "#D4A574",    # Active button
+                
+                # Inputs
+                "input_bg": "#3A3027",         # Input background
+                "input_fg": "#F5EBE0",         # Input text
+                "input_border": "#4A3F35",     # Input border
+                
+                # Special elements
+                "highlight": "#D4A574",        # Highlight color
+                "selection": "#5A4F45",        # Selection background
+                "border": "#4A3F35",           # Border color
+                "shadow": "#1D1815",           # Shadow color
+                
+                # Status colors
+                "status_focused": "#8C9F77",   # Focused status
+                "status_distracted": "#B07D7D" # Distracted status
             }
         else:
+            # Light mode with warm neutrals
             return {
-                "bg": "#ffffff",
-                "fg": "#000000",
-                "button_bg": "#f0f0f0",
-                "button_fg": "#000000",
-                "frame_bg": "#f8f8f8"
+                # Backgrounds
+                "bg": "#FAF7F2",              # Warm off-white
+                "bg_secondary": "#F5EFE7",     # Light beige
+                "frame_bg": "#F0E9DC",         # Frame background
+                "card_bg": "#FFFFFF",          # Card/panel background
+                
+                # Foregrounds
+                "fg": "#3D3229",              # Dark warm brown text
+                "fg_secondary": "#5C4E3F",     # Secondary text
+                "fg_muted": "#8A7968",         # Muted text
+                
+                # Accents
+                "accent_primary": "#B8956A",   # Warm tan
+                "accent_secondary": "#9C8159", # Darker tan
+                "accent_success": "#6B7D52",   # Olive green
+                "accent_warning": "#C9974A",   # Warm amber
+                "accent_danger": "#A65959",    # Muted red
+                
+                # Interactive elements
+                "button_bg": "#E6DCC8",        # Button background
+                "button_fg": "#3D3229",        # Button text
+                "button_hover": "#D4C5B0",     # Button hover
+                "button_active": "#B8956A",    # Active button
+                
+                # Inputs
+                "input_bg": "#FFFFFF",         # Input background
+                "input_fg": "#3D3229",         # Input text
+                "input_border": "#D4C5B0",     # Input border
+                
+                # Special elements
+                "highlight": "#B8956A",        # Highlight color
+                "selection": "#E6DCC8",        # Selection background
+                "border": "#D4C5B0",           # Border color
+                "shadow": "#D4C5B0",           # Shadow color
+                
+                # Status colors
+                "status_focused": "#6B7D52",   # Focused status
+                "status_distracted": "#A65959" # Distracted status
             }
 
 def check_system_compatibility() -> Dict[str, Any]:
