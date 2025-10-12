@@ -17,6 +17,7 @@ from PIL import Image, ImageTk
 from focus_tracker import FocusTracker
 from session_manager import SessionManager  
 from study_materials import StudyMaterialsManager
+from ai_assistant import AIAssistant
 from utils import SoundManager, NotificationManager, DataFormatter, ConfigManager
 from animations import (AnimationEngine, CircularProgress, ModernButton, 
                         ToastNotification, StatCard)
@@ -30,6 +31,7 @@ class ModernStudyFocusGUI:
         self.focus_tracker = FocusTracker()
         self.session_manager = SessionManager()
         self.materials_manager = StudyMaterialsManager()
+        self.ai_assistant = AIAssistant()
         self.sound_manager = SoundManager()
         self.notification_manager = NotificationManager()
         self.config_manager = ConfigManager()
@@ -462,19 +464,27 @@ class ModernStudyFocusGUI:
         self.camera_label.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         
     def create_materials_view(self):
-        """Create study materials view."""
+        """Create study materials view with AI assistant."""
         materials = tk.Frame(self.content_area, bg=self.colors["bg"])
         self.views["materials"] = materials
         
-        # Header
-        header = tk.Frame(materials, bg=self.colors["bg"])
+        # Create notebook for tabs
+        notebook = ttk.Notebook(materials)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Tab 1: Quick Links
+        links_tab = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(links_tab, text="Quick Links")
+        
+        # Header for links tab
+        header = tk.Frame(links_tab, bg=self.colors["bg"])
         header.pack(fill=tk.X, padx=40, pady=30)
         
         title = tk.Label(header, text="Study Materials", bg=self.colors["bg"],
                         fg=self.colors["fg"], font=("Arial", 32, "bold"))
         title.pack(side=tk.LEFT)
         
-        add_btn = ModernButton(header, text="Add Material", command=self.add_link,
+        add_btn = ModernButton(header, text="Add Link", command=self.add_link,
                               width=150, height=45,
                               bg_color=self.colors["accent_primary"],
                               text_color=self.colors["bg"],
@@ -483,10 +493,20 @@ class ModernStudyFocusGUI:
         add_btn.pack(side=tk.RIGHT)
         
         # Materials grid
-        self.materials_container = tk.Frame(materials, bg=self.colors["bg"])
+        self.materials_container = tk.Frame(links_tab, bg=self.colors["bg"])
         self.materials_container.pack(fill=tk.BOTH, expand=True, padx=40, pady=(0, 30))
         
         self.load_materials()
+        
+        # Tab 2: AI Assistant
+        ai_tab = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(ai_tab, text="AI Assistant")
+        self.create_ai_assistant_tab(ai_tab)
+        
+        # Tab 3: Uploaded Materials
+        uploads_tab = tk.Frame(notebook, bg=self.colors["bg"])
+        notebook.add(uploads_tab, text="My Uploads")
+        self.create_uploads_tab(uploads_tab)
         
     def load_materials(self):
         """Load and display study materials as cards."""
@@ -535,6 +555,567 @@ class ModernStudyFocusGUI:
         # Configure grid
         for i in range(3):
             self.materials_container.columnconfigure(i, weight=1, minsize=300)
+    
+    def create_ai_assistant_tab(self, parent):
+        """Create AI assistant interface."""
+        # Header
+        header = tk.Frame(parent, bg=self.colors["bg"])
+        header.pack(fill=tk.X, padx=30, pady=20)
+        
+        title = tk.Label(header, text="AI Study Assistant", bg=self.colors["bg"],
+                        fg=self.colors["fg"], font=("Arial", 28, "bold"))
+        title.pack(side=tk.LEFT)
+        
+        # Button frame for Recent Chats and Clear
+        btn_container = tk.Frame(header, bg=self.colors["bg"])
+        btn_container.pack(side=tk.RIGHT)
+        
+        # Recent chats button
+        recent_btn = ModernButton(btn_container, text="📜 Recent Chats", 
+                                 command=self.show_recent_chats,
+                                 width=150, height=40,
+                                 bg_color=self.colors["accent_secondary"],
+                                 text_color=self.colors["bg"])
+        recent_btn.config(bg=self.colors["bg"])
+        recent_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Clear chat button
+        clear_btn = ModernButton(btn_container, text="🔄 New Chat", 
+                                command=self.start_new_chat,
+                                width=120, height=40,
+                                bg_color=self.colors["button_bg"],
+                                text_color=self.colors["fg"])
+        clear_btn.config(bg=self.colors["bg"])
+        clear_btn.pack(side=tk.LEFT, padx=5)
+        
+        # Show status indicator if AI not configured
+        if not self.ai_assistant.is_configured():
+            status_label = tk.Label(header, text="⚠️ AI Not Available", 
+                                   bg=self.colors["bg"],
+                                   fg="#ff6b6b",
+                                   font=("Arial", 11, "italic"))
+            status_label.pack(side=tk.RIGHT, padx=10)
+        else:
+            status_label = tk.Label(header, text="✓ AI Ready", 
+                                   bg=self.colors["bg"],
+                                   fg="#51cf66",
+                                   font=("Arial", 11))
+            status_label.pack(side=tk.RIGHT, padx=10)
+        
+        # Chat container
+        chat_container = tk.Frame(parent, bg=self.colors["card_bg"])
+        chat_container.pack(fill=tk.BOTH, expand=True, padx=30, pady=(0, 20))
+        
+        # Chat display
+        chat_frame = tk.Frame(chat_container, bg=self.colors["card_bg"])
+        chat_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        self.chat_display = scrolledtext.ScrolledText(
+            chat_frame, wrap=tk.WORD,
+            bg=self.colors["input_bg"],
+            fg=self.colors["input_fg"],
+            font=("Arial", 11),
+            insertbackground=self.colors["fg"],
+            relief=tk.FLAT, padx=15, pady=15,
+            state=tk.DISABLED
+        )
+        self.chat_display.pack(fill=tk.BOTH, expand=True)
+        
+        # Configure tags for styling
+        self.chat_display.tag_config("question", foreground=self.colors["accent_primary"], 
+                                    font=("Arial", 11, "bold"))
+        self.chat_display.tag_config("answer", foreground=self.colors["fg"])
+        self.chat_display.tag_config("system", foreground=self.colors["fg_secondary"], 
+                                    font=("Arial", 10, "italic"))
+        
+        # Input area
+        input_frame = tk.Frame(chat_container, bg=self.colors["card_bg"])
+        input_frame.pack(fill=tk.X, padx=20, pady=(0, 20))
+        
+        # Mode selector
+        mode_frame = tk.Frame(input_frame, bg=self.colors["card_bg"])
+        mode_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        tk.Label(mode_frame, text="Mode:", bg=self.colors["card_bg"],
+                fg=self.colors["fg"], font=("Arial", 10)).pack(side=tk.LEFT, padx=(0, 10))
+        
+        self.ai_mode_var = tk.StringVar(value="internet")
+        
+        internet_rb = tk.Radiobutton(mode_frame, text="🌐 Internet", 
+                                    variable=self.ai_mode_var, value="internet",
+                                    bg=self.colors["card_bg"], fg=self.colors["fg"],
+                                    selectcolor=self.colors["accent_primary"],
+                                    font=("Arial", 10))
+        internet_rb.pack(side=tk.LEFT, padx=5)
+        
+        materials_rb = tk.Radiobutton(mode_frame, text="📚 My Materials Only", 
+                                     variable=self.ai_mode_var, value="materials",
+                                     bg=self.colors["card_bg"], fg=self.colors["fg"],
+                                     selectcolor=self.colors["accent_primary"],
+                                     font=("Arial", 10))
+        materials_rb.pack(side=tk.LEFT, padx=5)
+        
+        # Question input
+        question_frame = tk.Frame(input_frame, bg=self.colors["card_bg"])
+        question_frame.pack(fill=tk.X)
+        
+        self.question_entry = tk.Entry(
+            question_frame,
+            bg=self.colors["input_bg"],
+            fg=self.colors["input_fg"],
+            font=("Arial", 11),
+            insertbackground=self.colors["fg"],
+            relief=tk.FLAT
+        )
+        self.question_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, 
+                                ipady=10, padx=(0, 10))
+        self.question_entry.bind("<Return>", lambda e: self.ask_ai_question())
+        
+        ask_btn = ModernButton(question_frame, text="Ask", 
+                              command=self.ask_ai_question,
+                              width=100, height=40,
+                              bg_color=self.colors["accent_primary"],
+                              text_color=self.colors["bg"])
+        ask_btn.config(bg=self.colors["card_bg"])
+        ask_btn.pack(side=tk.RIGHT)
+        
+        # Load chat history
+        self.load_chat_history()
+    
+    def create_uploads_tab(self, parent):
+        """Create uploaded materials management interface."""
+        # Header
+        header = tk.Frame(parent, bg=self.colors["bg"])
+        header.pack(fill=tk.X, padx=30, pady=20)
+        
+        title = tk.Label(header, text="My Study Materials", bg=self.colors["bg"],
+                        fg=self.colors["fg"], font=("Arial", 28, "bold"))
+        title.pack(side=tk.LEFT)
+        
+        # Upload button
+        upload_btn = ModernButton(header, text="📁 Upload Material", 
+                                 command=self.upload_study_material,
+                                 width=180, height=45,
+                                 bg_color=self.colors["accent_primary"],
+                                 text_color=self.colors["bg"])
+        upload_btn.config(bg=self.colors["bg"])
+        upload_btn.pack(side=tk.RIGHT)
+        
+        # Materials list container
+        self.uploads_container = tk.Frame(parent, bg=self.colors["bg"])
+        self.uploads_container.pack(fill=tk.BOTH, expand=True, padx=30, pady=(0, 20))
+        
+        # Load uploaded materials
+        self.load_uploaded_materials()
+    
+    def ask_ai_question(self):
+        """Send question to AI assistant."""
+        question = self.question_entry.get().strip()
+        if not question:
+            return
+        
+        if not self.ai_assistant.is_configured():
+            messagebox.showerror("AI Not Available", 
+                                "AI Assistant is not configured.\n\n"
+                                "Please contact the app administrator to set up the API key in the .env file.")
+            return
+        
+        # Clear entry
+        self.question_entry.delete(0, tk.END)
+        
+        # Add question to chat
+        self.add_to_chat(f"You: {question}\n", "question")
+        
+        # Show loading
+        self.add_to_chat("AI is thinking...\n", "system")
+        
+        # Get mode
+        mode = self.ai_mode_var.get()
+        
+        # Process in thread to avoid blocking GUI
+        def process_question():
+            result = self.ai_assistant.ask_question(question, mode=mode)
+            
+            # Update GUI from main thread
+            self.root.after(0, lambda: self.display_ai_response(result))
+        
+        thread = threading.Thread(target=process_question, daemon=True)
+        thread.start()
+    
+    def display_ai_response(self, result):
+        """Display AI response in chat."""
+        # Remove "thinking" message
+        self.chat_display.config(state=tk.NORMAL)
+        content = self.chat_display.get("1.0", tk.END)
+        lines = content.split('\n')
+        if lines and "thinking" in lines[-2].lower():
+            # Remove last two lines (thinking message + blank line)
+            self.chat_display.delete("end-3l", "end-1l")
+        
+        if result.get("success"):
+            answer = result.get("answer", "No response")
+            mode_icon = "🌐" if result.get("mode") == "internet" else "📚"
+            
+            self.add_to_chat(f"{mode_icon} AI: {answer}\n\n", "answer")
+            
+            # Show info if no information found in materials
+            if result.get("mode") == "materials" and not result.get("found_info"):
+                self.add_to_chat("💡 Tip: Upload study materials or switch to Internet mode for more information.\n\n", "system")
+        else:
+            error = result.get("error", "Unknown error")
+            self.add_to_chat(f"❌ Error: {error}\n\n", "system")
+        
+        self.chat_display.config(state=tk.DISABLED)
+        self.chat_display.see(tk.END)
+    
+    def add_to_chat(self, text, tag):
+        """Add text to chat display with styling."""
+        self.chat_display.config(state=tk.NORMAL)
+        self.chat_display.insert(tk.END, text, tag)
+        self.chat_display.config(state=tk.DISABLED)
+        self.chat_display.see(tk.END)
+    
+    def load_chat_history(self):
+        """Load and display chat history - starts fresh by default."""
+        # Clear chat display first
+        self.chat_display.config(state=tk.NORMAL)
+        self.chat_display.delete("1.0", tk.END)
+        self.chat_display.config(state=tk.DISABLED)
+        
+        # Start with a fresh chat - no history loaded
+        self.ai_assistant.start_new_chat()
+        
+        # Show welcome message for fresh chat
+        self.add_to_chat("Welcome to AI Study Assistant! 👋\n\n", "system")
+        self.add_to_chat("You can ask me questions in two modes:\n", "system")
+        self.add_to_chat("🌐 Internet Mode: Get answers from the web\n", "system")
+        self.add_to_chat("📚 My Materials Mode: Get answers only from your uploaded study materials\n\n", "system")
+        self.add_to_chat("💡 Tip: Click '📜 Recent Chats' to view your previous conversations!\n\n", "system")
+    
+    def start_new_chat(self):
+        """Start a completely fresh chat."""
+        if messagebox.askyesno("New Chat", "Start a new chat? This will clear the current conversation."):
+            self.load_chat_history()
+            self.show_toast("Started new chat!")
+    
+    def show_recent_chats(self):
+        """Show popup with recent chat sessions."""
+        sessions = self.ai_assistant.get_chat_sessions()
+        
+        if not sessions:
+            messagebox.showinfo("Recent Chats", "No previous chat sessions found.")
+            return
+        
+        # Create popup dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Recent Chat Sessions")
+        dialog.geometry("700x500")
+        dialog.configure(bg=self.colors["bg"])
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Header
+        header = tk.Frame(dialog, bg=self.colors["bg"])
+        header.pack(fill=tk.X, padx=20, pady=20)
+        
+        tk.Label(header, text="Recent Chat Sessions", 
+                bg=self.colors["bg"], fg=self.colors["fg"],
+                font=("Arial", 18, "bold")).pack(side=tk.LEFT)
+        
+        close_btn = ModernButton(header, text="✕", 
+                                command=dialog.destroy,
+                                width=40, height=40,
+                                bg_color=self.colors["button_bg"],
+                                text_color=self.colors["fg"])
+        close_btn.config(bg=self.colors["bg"])
+        close_btn.pack(side=tk.RIGHT)
+        
+        # Sessions list with scrollbar
+        list_container = tk.Frame(dialog, bg=self.colors["bg"])
+        list_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=(0, 20))
+        
+        canvas = tk.Canvas(list_container, bg=self.colors["bg"], highlightthickness=0)
+        scrollbar = tk.Scrollbar(list_container, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors["bg"])
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Display each session as a card
+        for idx, session in enumerate(sessions):
+            self.create_session_card(scrollable_frame, session, idx, dialog)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Center dialog
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - dialog.winfo_width()) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - dialog.winfo_height()) // 2
+        dialog.geometry(f"+{x}+{y}")
+    
+    def create_session_card(self, parent, session, idx, dialog):
+        """Create a card for a chat session."""
+        card = tk.Frame(parent, bg=self.colors["card_bg"], cursor="hand2")
+        card.pack(fill=tk.X, pady=8)
+        
+        content = tk.Frame(card, bg=self.colors["card_bg"])
+        content.pack(fill=tk.X, padx=20, pady=15)
+        
+        # Session info
+        try:
+            start_dt = datetime.fromisoformat(session["start_time"])
+            date_str = start_dt.strftime("%B %d, %Y at %I:%M %p")
+        except:
+            date_str = "Unknown date"
+        
+        # Date and message count
+        header = tk.Frame(content, bg=self.colors["card_bg"])
+        header.pack(fill=tk.X)
+        
+        date_label = tk.Label(header, text=date_str,
+                             bg=self.colors["card_bg"], fg=self.colors["fg"],
+                             font=("Arial", 12, "bold"), anchor=tk.W)
+        date_label.pack(side=tk.LEFT)
+        
+        count_label = tk.Label(header, text=f"{session['message_count']} messages",
+                              bg=self.colors["card_bg"], fg=self.colors["fg_secondary"],
+                              font=("Arial", 10))
+        count_label.pack(side=tk.RIGHT)
+        
+        # Preview
+        preview_label = tk.Label(content, text=session["preview"],
+                                bg=self.colors["card_bg"], fg=self.colors["fg_secondary"],
+                                font=("Arial", 10), anchor=tk.W, wraplength=600, justify=tk.LEFT)
+        preview_label.pack(fill=tk.X, pady=(5, 0))
+        
+        # Hover effect
+        def on_enter(e):
+            card.config(bg=self.colors["button_hover"])
+            content.config(bg=self.colors["button_hover"])
+            header.config(bg=self.colors["button_hover"])
+            date_label.config(bg=self.colors["button_hover"])
+            count_label.config(bg=self.colors["button_hover"])
+            preview_label.config(bg=self.colors["button_hover"])
+        
+        def on_leave(e):
+            card.config(bg=self.colors["card_bg"])
+            content.config(bg=self.colors["card_bg"])
+            header.config(bg=self.colors["card_bg"])
+            date_label.config(bg=self.colors["card_bg"])
+            count_label.config(bg=self.colors["card_bg"])
+            preview_label.config(bg=self.colors["card_bg"])
+        
+        def on_click(e):
+            self.load_chat_session(session["messages"])
+            dialog.destroy()
+            self.show_toast(f"Loaded chat from {date_str}")
+        
+        card.bind("<Enter>", on_enter)
+        card.bind("<Leave>", on_leave)
+        card.bind("<Button-1>", on_click)
+        content.bind("<Button-1>", on_click)
+        header.bind("<Button-1>", on_click)
+        date_label.bind("<Button-1>", on_click)
+        count_label.bind("<Button-1>", on_click)
+        preview_label.bind("<Button-1>", on_click)
+    
+    def load_chat_session(self, messages):
+        """Load a specific chat session into the chat display."""
+        # Clear chat display
+        self.chat_display.config(state=tk.NORMAL)
+        self.chat_display.delete("1.0", tk.END)
+        
+        # Add header
+        self.add_to_chat("=== Loaded Previous Chat Session ===\n\n", "system")
+        
+        # Display all messages from the session
+        for item in messages:
+            question = item.get("question", "")
+            answer = item.get("answer", "")
+            mode = item.get("mode", "internet")
+            mode_icon = "🌐" if mode == "internet" else "📚"
+            
+            self.add_to_chat(f"You: {question}\n", "question")
+            self.add_to_chat(f"{mode_icon} AI: {answer}\n\n", "answer")
+        
+        self.add_to_chat("=== End of Previous Session ===\n", "system")
+        self.add_to_chat("💡 Continue the conversation or start a new chat!\n\n", "system")
+        
+        self.chat_display.config(state=tk.DISABLED)
+        self.chat_display.see(tk.END)
+    
+    def upload_study_material(self):
+        """Upload a new study material file."""
+        file_path = filedialog.askopenfilename(
+            title="Select Study Material",
+            filetypes=[
+                ("All Supported", "*.txt *.md *.pdf *.docx *.doc *.pptx *.ppt *.xlsx *.xls *.py *.java *.cpp *.js *.html *.css *.json"),
+                ("PDF Files", "*.pdf"),
+                ("Word Documents", "*.docx *.doc"),
+                ("PowerPoint", "*.pptx *.ppt"),
+                ("Excel Files", "*.xlsx *.xls"),
+                ("Text files", "*.txt"),
+                ("Markdown", "*.md"),
+                ("Code files", "*.py *.java *.cpp *.js *.html *.css *.json"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if not file_path:
+            return
+        
+        # Ask for title and description
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Material Details")
+        dialog.geometry("400x250")
+        dialog.configure(bg=self.colors["bg"])
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        tk.Label(dialog, text="Title:", bg=self.colors["bg"],
+                fg=self.colors["fg"], font=("Arial", 11)).pack(pady=(20, 5), padx=20, anchor=tk.W)
+        
+        title_entry = tk.Entry(dialog, bg=self.colors["input_bg"],
+                              fg=self.colors["input_fg"], font=("Arial", 10))
+        title_entry.pack(pady=5, padx=20, fill=tk.X, ipady=5)
+        title_entry.insert(0, os.path.basename(file_path))
+        
+        tk.Label(dialog, text="Description (optional):", bg=self.colors["bg"],
+                fg=self.colors["fg"], font=("Arial", 11)).pack(pady=(10, 5), padx=20, anchor=tk.W)
+        
+        desc_text = tk.Text(dialog, bg=self.colors["input_bg"],
+                           fg=self.colors["input_fg"], font=("Arial", 10),
+                           height=4)
+        desc_text.pack(pady=5, padx=20, fill=tk.X)
+        
+        def save_upload():
+            title = title_entry.get().strip()
+            description = desc_text.get("1.0", tk.END).strip()
+            
+            result = self.ai_assistant.upload_study_material(file_path, title, description)
+            
+            if result.get("success"):
+                messagebox.showinfo("Success", "Study material uploaded successfully!")
+                dialog.destroy()
+                self.load_uploaded_materials()
+            else:
+                messagebox.showerror("Error", f"Failed to upload: {result.get('error')}")
+        
+        btn_frame = tk.Frame(dialog, bg=self.colors["bg"])
+        btn_frame.pack(pady=20)
+        
+        save_btn = ModernButton(btn_frame, text="Upload", command=save_upload,
+                               width=100, height=35,
+                               bg_color=self.colors["accent_primary"],
+                               text_color=self.colors["bg"])
+        save_btn.config(bg=self.colors["bg"])
+        save_btn.pack(side=tk.LEFT, padx=5)
+        
+        cancel_btn = ModernButton(btn_frame, text="Cancel", command=dialog.destroy,
+                                 width=100, height=35,
+                                 bg_color=self.colors["button_hover"],
+                                 text_color=self.colors["fg"])
+        cancel_btn.config(bg=self.colors["bg"])
+        cancel_btn.pack(side=tk.LEFT, padx=5)
+    
+    def load_uploaded_materials(self):
+        """Load and display uploaded materials."""
+        # Clear existing
+        for widget in self.uploads_container.winfo_children():
+            widget.destroy()
+        
+        materials = self.ai_assistant.get_uploaded_materials()
+        
+        if not materials:
+            # Show empty state
+            empty_frame = tk.Frame(self.uploads_container, bg=self.colors["card_bg"])
+            empty_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+            
+            tk.Label(empty_frame, text="📚 No materials uploaded yet",
+                    bg=self.colors["card_bg"], fg=self.colors["fg_secondary"],
+                    font=("Arial", 16)).pack(expand=True)
+            return
+        
+        # Create scrollable list
+        canvas = tk.Canvas(self.uploads_container, bg=self.colors["bg"], 
+                          highlightthickness=0)
+        scrollbar = tk.Scrollbar(self.uploads_container, orient="vertical", 
+                                command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas, bg=self.colors["bg"])
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Display materials as cards
+        for material in materials:
+            card = tk.Frame(scrollable_frame, bg=self.colors["card_bg"])
+            card.pack(fill=tk.X, padx=10, pady=5)
+            
+            content = tk.Frame(card, bg=self.colors["card_bg"])
+            content.pack(fill=tk.X, padx=20, pady=15)
+            
+            # Title
+            title_label = tk.Label(content, text=material.get("title", "Untitled"),
+                                  bg=self.colors["card_bg"], fg=self.colors["fg"],
+                                  font=("Arial", 13, "bold"), anchor=tk.W)
+            title_label.pack(fill=tk.X)
+            
+            # Metadata
+            word_count = material.get("word_count", 0)
+            upload_date = material.get("upload_date", "")
+            if upload_date:
+                try:
+                    date_obj = datetime.fromisoformat(upload_date)
+                    upload_date = date_obj.strftime("%Y-%m-%d %H:%M")
+                except:
+                    pass
+            
+            meta_text = f"📄 {word_count} words  •  📅 {upload_date}"
+            meta_label = tk.Label(content, text=meta_text,
+                                 bg=self.colors["card_bg"], fg=self.colors["fg_secondary"],
+                                 font=("Arial", 9), anchor=tk.W)
+            meta_label.pack(fill=tk.X, pady=(5, 0))
+            
+            # Description
+            if material.get("description"):
+                desc_label = tk.Label(content, text=material.get("description"),
+                                     bg=self.colors["card_bg"], fg=self.colors["fg_secondary"],
+                                     font=("Arial", 10), anchor=tk.W, wraplength=700, justify=tk.LEFT)
+                desc_label.pack(fill=tk.X, pady=(5, 10))
+            
+            # Delete button
+            file_id = os.path.basename(material.get("full_path", ""))
+            delete_btn = ModernButton(content, text="🗑️ Delete",
+                                     command=lambda fid=file_id: self.delete_material(fid),
+                                     width=100, height=30,
+                                     bg_color="#c44536",
+                                     text_color="white")
+            delete_btn.config(bg=self.colors["card_bg"])
+            delete_btn.pack(anchor=tk.W)
+        
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    def delete_material(self, file_id):
+        """Delete an uploaded material."""
+        if messagebox.askyesno("Confirm Delete", 
+                              "Are you sure you want to delete this material?"):
+            if self.ai_assistant.delete_uploaded_material(file_id):
+                self.load_uploaded_materials()
+                messagebox.showinfo("Success", "Material deleted successfully!")
+            else:
+                messagebox.showerror("Error", "Failed to delete material")
         
     def create_analytics_view(self):
         """Create analytics view with charts."""

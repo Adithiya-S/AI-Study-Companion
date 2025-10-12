@@ -53,6 +53,27 @@ python main.py
 - **Built-in study techniques** (Pomodoro, Active Recall, etc.)
 - **Daily motivation** quotes and tips
 - **Resource management** system
+- **🤖 AI Study Assistant** powered by Google Gemini
+  - Ask questions with internet knowledge
+  - Query your uploaded study materials
+  - Smart context-aware responses
+  - Chat history and conversation tracking
+
+### 🤖 AI Study Assistant (NEW!)
+- **Dual-Mode Intelligence:**
+  - 🌐 **Internet Mode:** Get answers from the web
+  - 📚 **Materials Mode:** Query only your uploaded study materials
+- **Multi-Format Document Support:**
+  - 📄 **PDF files** - Extract text from PDF documents
+  - 📝 **Word documents** - .docx and .doc files
+  - 📊 **PowerPoint presentations** - .pptx and .ppt files
+  - 📈 **Excel spreadsheets** - .xlsx and .xls files
+  - 📁 **Text & Code files** - .txt, .md, .py, .java, .cpp, .js, .html, .css, .json, etc.
+- **Smart Responses:** Context-aware answers based on mode
+- **Chat History:** Review past conversations
+- **Material Management:** Upload, organize, and delete study materials
+- **Pre-configured:** No API key setup needed for users - administrator sets up once!
+- See [ADMIN_SETUP.md](ADMIN_SETUP.md) for initial configuration (admin only)
 
 ### 📈 Productivity Reports
 - **Session completion rates** and efficiency metrics
@@ -79,6 +100,11 @@ All dependencies are automatically installed via `requirements.txt`:
 - **pillow** - Image processing for GUI
 - **pygame** - Audio alerts
 - **plyer** - Cross-platform notifications
+- **google-generativeai** - Gemini AI integration (for AI assistant)
+- **PyPDF2** - PDF document parsing
+- **python-docx** - Word document (.docx) parsing
+- **python-pptx** - PowerPoint presentation parsing
+- **openpyxl** - Excel spreadsheet parsing
 - **tkinter** - GUI framework (included with Python)
 
 ## 🎯 How It Works
@@ -151,18 +177,6 @@ Where:
 - Try: `pip install --no-cache-dir -r requirements.txt`
 - On Linux: `sudo apt-get install python3-opencv`
 
-## 🤝 Contributing
-
-Contributions welcome! Areas for improvement:
-- Enhanced focus algorithms
-- Additional study techniques
-- UI/UX improvements  
-- Cross-platform compatibility
-- Performance optimizations
-
-## 📄 License
-
-MIT License - See LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
