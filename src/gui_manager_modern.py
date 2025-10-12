@@ -98,6 +98,10 @@ class ModernStudyFocusGUI:
         # Set focus tracking sensitivity from config
         sensitivity = self.config_manager.get("focus_tracking.sensitivity", "medium")
         self.focus_tracker.set_sensitivity(sensitivity)
+        
+        # Set face outline visibility from config
+        show_outline = self.config_manager.get("focus_tracking.show_outline", True)
+        self.focus_tracker.set_show_outline(show_outline)
             
         self.running = True
         
@@ -159,20 +163,6 @@ class ModernStudyFocusGUI:
         
         for label, view_name in nav_items:
             self.create_nav_button(nav_frame, label, view_name)
-        
-        # Theme toggle at bottom
-        theme_frame = tk.Frame(sidebar, bg=self.colors["bg_secondary"])
-        theme_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=20, padx=20)
-        
-        theme_text = "Dark Mode" if self.config_manager.get("theme.mode") == "light" else "Light Mode"
-        theme_btn = ModernButton(theme_frame, text=theme_text, 
-                                command=self.toggle_theme,
-                                width=210, height=45,
-                                bg_color=self.colors["button_bg"],
-                                text_color=self.colors["fg"],
-                                hover_color=self.colors["button_hover"])
-        theme_btn.config(bg=self.colors["bg_secondary"])
-        theme_btn.pack()
         
     def create_nav_button(self, parent, text: str, view_name: str):
         """Create a navigation button."""
@@ -1183,7 +1173,8 @@ class ModernStudyFocusGUI:
         
         # Focus Tracking
         self.create_setting_card(settings, "Focus Tracking", [
-            ("Sensitivity", "combobox", "focus_tracking.sensitivity", ["low", "medium", "high"])
+            ("Sensitivity", "combobox", "focus_tracking.sensitivity", ["low", "medium", "high"]),
+            ("Show Face Outline", "checkbox", "focus_tracking.show_outline", None)
         ])
         
         # Camera
@@ -1523,9 +1514,13 @@ Great job studying!"""
             # Get sensitivity setting
             new_sensitivity = self.setting_focus_tracking_sensitivity.get()
             
+            # Get face outline setting
+            show_outline = self.setting_focus_tracking_show_outline.get()
+            
             # Save all settings
             self.config_manager.set("theme.mode", self.setting_theme_mode.get())
             self.config_manager.set("focus_tracking.sensitivity", new_sensitivity)
+            self.config_manager.set("focus_tracking.show_outline", show_outline)
             self.config_manager.set("camera.device_index", new_camera_index)
             self.config_manager.set("notifications.sounds", self.setting_notifications_sounds.get())
             self.config_manager.set("notifications.enabled", self.setting_notifications_enabled.get())
@@ -1535,6 +1530,9 @@ Great job studying!"""
             
             # Apply sensitivity change
             self.focus_tracker.set_sensitivity(new_sensitivity)
+            
+            # Apply face outline setting
+            self.focus_tracker.set_show_outline(show_outline)
             
             # Reinitialize camera if index changed
             if old_camera_index != new_camera_index:

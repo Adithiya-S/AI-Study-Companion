@@ -104,6 +104,9 @@ class FocusTracker:
         self.focus_events = []
         self.distraction_count = 0
         
+        # Display settings
+        self.show_outline = True  # Show face/eye tracking outline by default
+        
         # Callbacks
         self.distraction_callback = None
         
@@ -134,6 +137,16 @@ class FocusTracker:
         print(f"  Pitch threshold: ±{self.HEAD_PITCH_THRESHOLD}°")
         print(f"  Yaw threshold: ±{self.HEAD_YAW_THRESHOLD}°")
         print(f"  Distraction time limit: {self.DISTRACTION_TIME_LIMIT}s")
+        
+    def set_show_outline(self, show: bool):
+        """
+        Enable or disable the face/eye tracking outline visualization.
+        
+        Args:
+            show: True to show outline, False to hide
+        """
+        self.show_outline = show
+        print(f"Face tracking outline: {'enabled' if show else 'disabled'}")
         
     def set_callbacks(self, distraction_callback: Optional[Callable] = None):
         """Set callback functions for events."""
@@ -664,8 +677,8 @@ class FocusTracker:
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
         # Draw annotations
-        if focus_data["focus_score"] > 0:
-            # Draw face mesh
+        if focus_data["focus_score"] > 0 and self.show_outline:
+            # Draw face mesh only if outline is enabled
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = self.face_mesh.process(rgb_frame)
             
