@@ -1,31 +1,53 @@
-# Study Focus App - Python 3.8-3.12 Compatible
+# Study Focus App - Python 3.11 Recommended
 
 A powerful Python-based study productivity application with real-time eye tracking using MediaPipe.
 
-## 🐍 Python Version Support
+## 🐍 Python Version Compatibility
 
-**Supported Versions:** Python 3.8, 3.9, 3.10, 3.11, 3.12
+**✅ RECOMMENDED:** Python 3.11 (Best compatibility)  
+**✅ Supported:** Python 3.8, 3.9, 3.10, 3.12  
+**⚠️ NOT Compatible:** Python 3.13+ (MediaPipe issues - camera will NOT work)
 
-**Note:** Python 3.13+ is not yet supported due to MediaPipe compatibility limitations.
+### Why Python 3.11?
+- Perfect compatibility with MediaPipe (eye tracking)
+- All features guaranteed to work
+- Extensively tested and verified
+- Best performance
+
+### Installing Python 3.11
+Download from: https://www.python.org/downloads/release/python-3110/
+
+After installation, you can run the app with:
+```bash
+py -3.11 main.py
+```
 
 ## 🚀 Quick Start
 
-### Option 1: One-Click Launch (Recommended)
+### Option 1: Automated Setup with Python 3.11 (Best)
 ```bash
-# Windows
-start_app.bat
-
-# macOS/Linux  
-./start_app.sh
+# Automatically finds and uses Python 3.11
+run_python311.bat
 ```
 
-### Option 2: Manual Installation
+### Option 2: One-Click Setup
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Installs dependencies and runs integrity check
+setup.bat
+```
+
+### Option 3: Java Launcher (Auto-detects Python 3.11)
+```bash
+run_launcher.bat
+```
+
+### Option 4: Manual Installation
+```bash
+# Install dependencies with Python 3.11
+py -3.11 -m pip install -r requirements.txt
 
 # Run the app
-python main.py
+py -3.11 main.py
 ```
 
 ## ✨ Features

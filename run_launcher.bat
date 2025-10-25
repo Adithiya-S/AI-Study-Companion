@@ -32,21 +32,56 @@ if errorlevel 1 (
 echo [OK] Java found
 echo.
 
-REM Check if Python is installed
-echo [2/3] Checking Python installation...
+REM Check if Python 3.11 is installed
+echo [2/3] Checking Python 3.11 installation...
+
+REM Try py launcher with 3.11
+py -3.11 --version >nul 2>&1
+if not errorlevel 1 (
+    echo [OK] Python 3.11 found via py launcher
+    goto :compile_java
+)
+
+REM Try python3.11 directly
+python3.11 --version >nul 2>&1
+if not errorlevel 1 (
+    echo [OK] Python 3.11 found
+    goto :compile_java
+)
+
+REM Try python311
+python311 --version >nul 2>&1
+if not errorlevel 1 (
+    echo [OK] Python 3.11 found
+    goto :compile_java
+)
+
+REM Check for any Python (with warning)
 python --version >nul 2>&1
-if errorlevel 1 (
+if not errorlevel 1 (
     echo.
-    echo [WARNING] Python is not installed or not in PATH
-    echo The Java launcher will attempt to run but may fail
+    echo [WARNING] Python 3.11 not found, using default Python
+    python --version
+    echo The Java launcher will attempt to find Python 3.11 automatically
     echo.
-    echo Please install Python 3.8-3.12 from:
-    echo https://www.python.org/downloads/
+    echo For best results, install Python 3.11 from:
+    echo https://www.python.org/downloads/release/python-3110/
     echo.
     pause
+    goto :compile_java
 )
-echo [OK] Python found
+
+REM No Python found at all
 echo.
+echo [ERROR] Python is not installed or not in PATH
+echo The Java launcher requires Python 3.11
+echo.
+echo Please install Python 3.11 from:
+echo https://www.python.org/downloads/release/python-3110/
+echo.
+pause
+
+:compile_java
 
 REM Compile the Java launcher if needed
 echo [3/3] Compiling Java launcher...

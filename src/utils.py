@@ -229,90 +229,90 @@ class ConfigManager:
         self.save_config()
         
     def get_theme_colors(self) -> Dict[str, str]:
-        """Get theme color configuration with warm neutral colors."""
+        """Get theme color configuration with modern, vibrant colors."""
         if self.config["theme"]["mode"] == "dark":
-            # Dark mode with warm neutrals
+            # Modern dark mode with vibrant accents
             return {
                 # Backgrounds
-                "bg": "#2D2520",              # Dark warm brown
-                "bg_secondary": "#3A3027",     # Lighter dark brown
-                "frame_bg": "#342B24",         # Frame background
-                "card_bg": "#3F362E",          # Card/panel background
+                "bg": "#0F172A",              # Deep slate background
+                "bg_secondary": "#1E293B",     # Lighter slate
+                "frame_bg": "#1E293B",         # Frame background
+                "card_bg": "#1E293B",          # Card/panel background
                 
                 # Foregrounds
-                "fg": "#F5EBE0",              # Warm off-white text
-                "fg_secondary": "#D4C5B9",     # Secondary text
-                "fg_muted": "#9A8A7B",         # Muted text
+                "fg": "#F1F5F9",              # Almost white text
+                "fg_secondary": "#CBD5E1",     # Light gray text
+                "fg_muted": "#94A3B8",         # Muted text
                 
-                # Accents
-                "accent_primary": "#D4A574",   # Warm tan/gold
-                "accent_secondary": "#B8956A", # Darker tan
-                "accent_success": "#8C9F77",   # Muted olive green
-                "accent_warning": "#D4A574",   # Warm amber
-                "accent_danger": "#B07D7D",    # Muted red
+                # Accents - Modern purple/blue
+                "accent_primary": "#6366F1",   # Indigo-500
+                "accent_secondary": "#818CF8", # Indigo-400
+                "accent_success": "#10B981",   # Emerald-500
+                "accent_warning": "#F59E0B",   # Amber-500
+                "accent_danger": "#EF4444",    # Red-500
                 
                 # Interactive elements
-                "button_bg": "#4A3F35",        # Button background
-                "button_fg": "#F5EBE0",        # Button text
-                "button_hover": "#5A4F45",     # Button hover
-                "button_active": "#D4A574",    # Active button
+                "button_bg": "#6366F1",        # Indigo button
+                "button_fg": "#FFFFFF",        # White text
+                "button_hover": "#818CF8",     # Lighter indigo
+                "button_active": "#4F46E5",    # Darker indigo
                 
                 # Inputs
-                "input_bg": "#3A3027",         # Input background
-                "input_fg": "#F5EBE0",         # Input text
-                "input_border": "#4A3F35",     # Input border
+                "input_bg": "#0F172A",         # Dark input
+                "input_fg": "#F1F5F9",         # Light text
+                "input_border": "#334155",     # Border color
                 
                 # Special elements
-                "highlight": "#D4A574",        # Highlight color
-                "selection": "#5A4F45",        # Selection background
-                "border": "#4A3F35",           # Border color
-                "shadow": "#1D1815",           # Shadow color
+                "highlight": "#6366F1",        # Indigo highlight
+                "selection": "#334155",        # Selection background
+                "border": "#334155",           # Border color
+                "shadow": "#020617",           # Deep shadow
                 
                 # Status colors
-                "status_focused": "#8C9F77",   # Focused status
-                "status_distracted": "#B07D7D" # Distracted status
+                "status_focused": "#10B981",   # Green when focused
+                "status_distracted": "#EF4444" # Red when distracted
             }
         else:
-            # Light mode with warm neutrals
+            # Modern light mode with clean aesthetics
             return {
                 # Backgrounds
-                "bg": "#FAF7F2",              # Warm off-white
-                "bg_secondary": "#F5EFE7",     # Light beige
-                "frame_bg": "#F0E9DC",         # Frame background
-                "card_bg": "#FFFFFF",          # Card/panel background
+                "bg": "#F8FAFC",              # Very light slate
+                "bg_secondary": "#F1F5F9",     # Light slate
+                "frame_bg": "#FFFFFF",         # Pure white
+                "card_bg": "#FFFFFF",          # White cards
                 
                 # Foregrounds
-                "fg": "#3D3229",              # Dark warm brown text
-                "fg_secondary": "#5C4E3F",     # Secondary text
-                "fg_muted": "#8A7968",         # Muted text
+                "fg": "#0F172A",              # Dark slate text
+                "fg_secondary": "#475569",     # Medium gray text
+                "fg_muted": "#94A3B8",         # Muted text
                 
-                # Accents
-                "accent_primary": "#B8956A",   # Warm tan
-                "accent_secondary": "#9C8159", # Darker tan
-                "accent_success": "#6B7D52",   # Olive green
-                "accent_warning": "#C9974A",   # Warm amber
-                "accent_danger": "#A65959",    # Muted red
+                # Accents - Modern purple/blue
+                "accent_primary": "#6366F1",   # Indigo-500
+                "accent_secondary": "#818CF8", # Indigo-400
+                "accent_success": "#10B981",   # Emerald-500
+                "accent_warning": "#F59E0B",   # Amber-500
+                "accent_danger": "#EF4444",    # Red-500
                 
                 # Interactive elements
-                "button_bg": "#E6DCC8",        # Button background
-                "button_fg": "#3D3229",        # Button text
-                "button_hover": "#D4C5B0",     # Button hover
-                "button_active": "#B8956A",    # Active button
+                "button_bg": "#6366F1",        # Indigo button
+                "button_fg": "#FFFFFF",        # White text
+                "button_hover": "#818CF8",     # Lighter indigo
+                "button_active": "#4F46E5",    # Darker indigo
                 
                 # Inputs
-                "input_bg": "#FFFFFF",         # Input background
-                "input_fg": "#3D3229",         # Input text
-                "input_border": "#D4C5B0",     # Input border
+                "input_bg": "#FFFFFF",         # White input
+                "input_fg": "#0F172A",         # Dark text
+                "input_border": "#E2E8F0",     # Light border
                 
                 # Special elements
-                "highlight": "#B8956A",        # Highlight color
-                "selection": "#E6DCC8",        # Selection background
-                "border": "#D4C5B0",           # Border color
-                "shadow": "#D4C5B0",           # Shadow color
+                "highlight": "#6366F1",        # Indigo highlight
+                "selection": "#E0E7FF",        # Light indigo selection
+                "border": "#E2E8F0",           # Light border
+                "shadow": "#CBD5E1",           # Light shadow
                 
                 # Status colors
-                "status_focused": "#6B7D52",   # Focused status
-                "status_distracted": "#A65959" # Distracted status
+                "status_focused": "#10B981",   # Green when focused
+                "status_distracted": "#EF4444" # Red when distracted
             }
 
 def check_system_compatibility() -> Dict[str, Any]:

@@ -34,15 +34,20 @@ def check_python_version():
 
     if version < (3, 8):
         print("❌ ERROR: Python 3.8 or higher is required")
-        print("Please upgrade to Python 3.8-3.12 for compatibility")
+        print("Please upgrade to Python 3.11 for best compatibility")
         return False
+    elif version.major == 3 and version.minor == 11:
+        print("✅ PERFECT: Python 3.11 detected - Optimal version!")
+        return True
     elif version >= (3, 13):
         print("⚠️  WARNING: Python 3.13+ is not officially supported")
-        print("MediaPipe may have compatibility issues with Python 3.13+")
-        print("The app will attempt to run, but camera features may not work")
+        print("MediaPipe has compatibility issues with Python 3.13+")
+        print("STRONGLY RECOMMENDED: Use Python 3.11 for full functionality")
+        print("The app will attempt to run, but camera features will likely NOT work")
         return True  # Allow running for testing UI
     elif version.major == 3 and 8 <= version.minor <= 12:
         print("✅ COMPATIBLE: Python version supported")
+        print("💡 Note: Python 3.11 is recommended for optimal performance")
         return True
 
     return False

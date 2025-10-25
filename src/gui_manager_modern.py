@@ -315,17 +315,19 @@ class ModernStudyFocusGUI:
                                              command=self.start_session,
                                              width=180, height=55,
                                              bg_color=self.colors["accent_primary"],
-                                             text_color=self.colors["bg"],
-                                             hover_color=self.colors["accent_secondary"])
+                                             text_color="#FFFFFF",
+                                             hover_color=self.colors["accent_secondary"],
+                                             corner_radius=14)
         self.start_session_btn.config(bg=self.colors["card_bg"])
         self.start_session_btn.pack(side=tk.LEFT, padx=5)
         
         self.pause_session_btn = ModernButton(right, text="Pause", 
                                              command=self.pause_session,
                                              width=120, height=55,
-                                             bg_color=self.colors["button_bg"],
-                                             text_color=self.colors["fg"],
-                                             hover_color=self.colors["button_hover"])
+                                             bg_color="#64748B",
+                                             text_color="#FFFFFF",
+                                             hover_color="#94A3B8",
+                                             corner_radius=14)
         self.pause_session_btn.config(bg=self.colors["card_bg"], state=tk.DISABLED)
         self.pause_session_btn.pack(side=tk.LEFT, padx=5)
         
@@ -333,8 +335,9 @@ class ModernStudyFocusGUI:
                                            command=self.end_session,
                                            width=120, height=55,
                                            bg_color=self.colors["accent_danger"],
-                                           text_color=self.colors["fg"],
-                                           hover_color="#8B6565")
+                                           text_color="#FFFFFF",
+                                           hover_color="#DC2626",
+                                           corner_radius=14)
         self.end_session_btn.config(bg=self.colors["card_bg"], state=tk.DISABLED)
         self.end_session_btn.pack(side=tk.LEFT, padx=5)
         
@@ -573,8 +576,9 @@ class ModernStudyFocusGUI:
         clear_btn = ModernButton(btn_container, text="🔄 New Chat", 
                                 command=self.start_new_chat,
                                 width=120, height=40,
-                                bg_color=self.colors["button_bg"],
-                                text_color=self.colors["fg"])
+                                bg_color="#64748B",
+                                text_color="#FFFFFF",
+                                corner_radius=12)
         clear_btn.config(bg=self.colors["bg"])
         clear_btn.pack(side=tk.LEFT, padx=5)
         
@@ -665,7 +669,8 @@ class ModernStudyFocusGUI:
                               command=self.ask_ai_question,
                               width=100, height=40,
                               bg_color=self.colors["accent_primary"],
-                              text_color=self.colors["bg"])
+                              text_color="#FFFFFF",
+                              corner_radius=12)
         ask_btn.config(bg=self.colors["card_bg"])
         ask_btn.pack(side=tk.RIGHT)
         
@@ -687,7 +692,8 @@ class ModernStudyFocusGUI:
                                  command=self.upload_study_material,
                                  width=180, height=45,
                                  bg_color=self.colors["accent_primary"],
-                                 text_color=self.colors["bg"])
+                                 text_color="#FFFFFF",
+                                 corner_radius=14)
         upload_btn.config(bg=self.colors["bg"])
         upload_btn.pack(side=tk.RIGHT)
         
@@ -1507,9 +1513,11 @@ Great job studying!"""
     def save_settings(self):
         """Save application settings."""
         try:
-            # Get old camera index to check if it changed
+            # Get old values to check for changes
             old_camera_index = self.config_manager.get("camera.device_index", 0)
             new_camera_index = int(self.setting_camera_device_index.get())
+            old_theme = self.config_manager.get("theme.mode")
+            new_theme = self.setting_theme_mode.get()
             
             # Get sensitivity setting
             new_sensitivity = self.setting_focus_tracking_sensitivity.get()
@@ -1518,7 +1526,7 @@ Great job studying!"""
             show_outline = self.setting_focus_tracking_show_outline.get()
             
             # Save all settings
-            self.config_manager.set("theme.mode", self.setting_theme_mode.get())
+            self.config_manager.set("theme.mode", new_theme)
             self.config_manager.set("focus_tracking.sensitivity", new_sensitivity)
             self.config_manager.set("focus_tracking.show_outline", show_outline)
             self.config_manager.set("camera.device_index", new_camera_index)
@@ -1534,6 +1542,11 @@ Great job studying!"""
             # Apply face outline setting
             self.focus_tracker.set_show_outline(show_outline)
             
+            # Apply theme change immediately
+            if old_theme != new_theme:
+                self.show_toast(f"Switching to {new_theme} mode...")
+                self.root.after(100, self.apply_theme_change)
+            
             # Reinitialize camera if index changed
             if old_camera_index != new_camera_index:
                 if self.session_active:
@@ -1547,7 +1560,8 @@ Great job studying!"""
                         # Revert to old camera index
                         self.config_manager.set("camera.device_index", old_camera_index)
                         self.focus_tracker.initialize_camera(old_camera_index)
-            else:
+            elif old_theme == new_theme:
+                # Only show this message if theme didn't change
                 self.show_toast("Settings saved successfully!")
                 
         except Exception as e:
@@ -1559,7 +1573,190 @@ Great job studying!"""
         new_mode = "dark" if current_mode == "light" else "light"
         
         self.config_manager.set("theme.mode", new_mode)
-        self.show_toast(f"Switched to {new_mode} mode - Restart to apply")
+        self.show_toast(f"Switching to {new_mode} mode...")
+        self.root.after(100, self.apply_theme_change)
+    
+    def apply_theme_change(self):
+        """Apply theme change to all UI elements without restarting."""
+        # Get new theme colors
+        self.colors = self.config_manager.get_theme_colors()
+        
+        # Update root window
+        self.root.configure(bg=self.colors["bg"])
+        
+        # Update all views
+        for view in self.views.values():
+            self.update_widget_theme(view)
+        
+        # Update content area
+        if hasattr(self, 'content_area'):
+            self.content_area.configure(bg=self.colors["bg"])
+        
+        # Update sidebar buttons
+        for name, btn in self.sidebar_buttons.items():
+            if name == self.current_view:
+                btn.config(bg=self.colors["accent_primary"], 
+                          fg=self.colors["bg"])
+            else:
+                btn.config(bg=self.colors["bg_secondary"], 
+                          fg=self.colors["fg"])
+        
+        # Update specific widgets that need manual refresh
+        self.update_special_widgets()
+        
+        current_mode = self.config_manager.get("theme.mode")
+        self.show_toast(f"✓ {current_mode.capitalize()} mode applied!")
+    
+    def update_widget_theme(self, widget):
+        """Recursively update theme for a widget and its children."""
+        try:
+            # Get widget type
+            widget_class = widget.winfo_class()
+            
+            # Update based on widget type
+            if widget_class == 'Frame':
+                current_bg = str(widget.cget('bg'))
+                # Map old colors to new colors
+                if '#' in current_bg or current_bg in ['SystemButtonFace', 'white', 'black']:
+                    # Determine which background to use based on context
+                    if hasattr(widget, '_card_widget'):
+                        widget.configure(bg=self.colors["card_bg"])
+                    elif hasattr(widget, '_secondary_bg'):
+                        widget.configure(bg=self.colors["bg_secondary"])
+                    else:
+                        widget.configure(bg=self.colors["bg"])
+            
+            elif widget_class == 'Label':
+                current_bg = str(widget.cget('bg'))
+                current_fg = str(widget.cget('fg'))
+                
+                # Update background
+                if '#' in current_bg:
+                    if 'card' in current_bg or 'Card' in str(widget):
+                        widget.configure(bg=self.colors["card_bg"])
+                    elif 'secondary' in current_bg:
+                        widget.configure(bg=self.colors["bg_secondary"])
+                    else:
+                        widget.configure(bg=self.colors["bg"])
+                
+                # Update foreground based on current color role
+                if '#' in current_fg:
+                    # Try to determine if it's a primary, secondary, or accent color
+                    if 'accent' in str(widget.cget('font')) or 'bold' in str(widget.cget('font')):
+                        widget.configure(fg=self.colors["fg"])
+                    else:
+                        widget.configure(fg=self.colors["fg_secondary"])
+            
+            elif widget_class in ['Entry', 'Text']:
+                widget.configure(
+                    bg=self.colors["input_bg"],
+                    fg=self.colors["input_fg"],
+                    insertbackground=self.colors["fg"]
+                )
+            
+            elif widget_class == 'Canvas':
+                widget.configure(bg=self.colors["bg"])
+            
+            elif widget_class == 'Button':
+                widget.configure(
+                    bg=self.colors["button_bg"],
+                    fg=self.colors["button_fg"]
+                )
+            
+            # Recursively update children
+            for child in widget.winfo_children():
+                self.update_widget_theme(child)
+                
+        except Exception as e:
+            # Skip widgets that don't support theme updates
+            pass
+    
+    def update_special_widgets(self):
+        """Update special widgets that need manual configuration."""
+        try:
+            # Update chat display
+            if hasattr(self, 'chat_display'):
+                self.chat_display.configure(
+                    bg=self.colors["input_bg"],
+                    fg=self.colors["input_fg"]
+                )
+                # Update tags
+                self.chat_display.tag_config("question", 
+                                           foreground=self.colors["accent_primary"])
+                self.chat_display.tag_config("answer", 
+                                           foreground=self.colors["fg"])
+                self.chat_display.tag_config("system", 
+                                           foreground=self.colors["fg_secondary"])
+            
+            # Update report text
+            if hasattr(self, 'report_text'):
+                self.report_text.configure(
+                    bg=self.colors["input_bg"],
+                    fg=self.colors["input_fg"]
+                )
+            
+            # Update camera label
+            if hasattr(self, 'camera_label'):
+                self.camera_label.configure(
+                    bg=self.colors["bg_secondary"],
+                    fg=self.colors["fg_muted"]
+                )
+            
+            # Update focus indicator
+            if hasattr(self, 'focus_indicator'):
+                self.focus_indicator.configure(bg=self.colors["card_bg"])
+            
+            # Update session labels
+            if hasattr(self, 'session_status_label'):
+                self.session_status_label.configure(
+                    bg=self.colors["card_bg"],
+                    fg=self.colors["fg"]
+                )
+            
+            if hasattr(self, 'session_subtitle'):
+                self.session_subtitle.configure(
+                    bg=self.colors["card_bg"],
+                    fg=self.colors["fg_secondary"]
+                )
+            
+            # Update timer display
+            if hasattr(self, 'timer_display'):
+                self.timer_display.configure(
+                    bg=self.colors["card_bg"],
+                    fg=self.colors["fg"]
+                )
+            
+            # Update circular progress colors
+            if hasattr(self, 'timer_progress'):
+                self.timer_progress.color = self.colors["accent_primary"]
+                self.timer_progress.bg_color = self.colors["bg_secondary"]
+                self.timer_progress.update_display()
+            
+            # Update ModernButton colors (they need special handling)
+            self.update_modern_buttons()
+            
+        except Exception as e:
+            print(f"Error updating special widgets: {e}")
+    
+    def update_modern_buttons(self):
+        """Update all ModernButton instances."""
+        # This method updates buttons by finding them in the widget tree
+        def update_buttons_recursive(widget):
+            try:
+                if isinstance(widget, ModernButton):
+                    # Update button based on its current role
+                    if hasattr(widget, 'original_bg'):
+                        # Keep the original semantic color role
+                        pass
+                    widget.config(bg=self.colors["card_bg"])
+                
+                for child in widget.winfo_children():
+                    update_buttons_recursive(child)
+            except:
+                pass
+        
+        if hasattr(self, 'content_area'):
+            update_buttons_recursive(self.content_area)
         
     def show_toast(self, message: str):
         """Show toast notification."""
