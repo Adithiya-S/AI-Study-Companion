@@ -1376,9 +1376,8 @@ class ModernStudyFocusGUI:
         while self.running and self.session_active:
             try:
                 if self.focus_tracker.camera and self.focus_tracker.is_tracking:
-                    frame = self.focus_tracker.process_frame()
-                    if frame is not None:
-                        focus_data = self.focus_tracker.analyze_focus_level(frame)
+                    frame, focus_data = self.focus_tracker.process_frame()
+                    if frame is not None and focus_data is not None:
                         self.root.after(0, self.update_focus_display, focus_data)
                         self.root.after(0, self.update_camera_feed, frame)
                         
@@ -1434,8 +1433,8 @@ class ModernStudyFocusGUI:
                 self.camera_label.configure(image=imgtk, text="")
                 self.camera_label.image = imgtk  # Keep a reference
                 
-        except Exception as e:
-            print(f"Camera feed update error: {e}")
+        except Exception:
+            pass  # Suppress frequent frame errors for perf
         
     def update_dashboard_stats(self):
         """Update dashboard statistics."""
@@ -1744,11 +1743,26 @@ Great job studying!"""
         def update_buttons_recursive(widget):
             try:
                 if isinstance(widget, ModernButton):
-                    # Update button based on its current role
-                    if hasattr(widget, 'original_bg'):
-                        # Keep the original semantic color role
+                    # Determine semantic role from current fill color
+                    fill = None
+                    try:
+                        # Attempt to read internal bg polygon fill
+                        fill = widget.itemcget(widget._bg_item, 'fill')
+                    except Exception:
                         pass
-                    widget.config(bg=self.colors["card_bg"])
+                    # Map old fill to new theme colors (basic heuristic)
+                    if fill in ["#6366F1", self.colors.get("accent_primary")]:
+                        widget.set_colors(self.colors["accent_primary"], self.colors["bg"], self.colors["accent_secondary"])
+                    elif fill in ["#EF4444", self.colors.get("accent_danger")]:
+                        widget.set_colors(self.colors["accent_danger"], "#FFFFFF", "#DC2626")
+                    elif fill in ["#64748B"]:
+                        # Muted button (pause/resume)
+                        widget.set_colors("#64748B" if self.config_manager.get("theme.mode") == "light" else "#475569", "#FFFFFF", "#94A3B8")
+                    else:
+                        # Default card background style button
+                        widget.set_colors(self.colors["accent_primary"], self.colors["bg"], self.colors["accent_secondary"])
+                    # Ensure canvas bg matches surrounding card
+                    widget.configure(bg=self.colors["card_bg"])
                 
                 for child in widget.winfo_children():
                     update_buttons_recursive(child)

@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 try:
     from dotenv import load_dotenv
@@ -66,6 +67,9 @@ class AIAssistant:
         self.model = None
         self.chat_session = None
         self.chat_history = []
+        # Debounced persistence settings
+        self._last_history_save_ts = 0.0
+        self._history_save_min_interval = 2.0  # seconds
         
         # Load API key from .env file
         self.load_api_key_from_env()
@@ -488,22 +492,25 @@ Answer:"""
     def load_all_materials(self) -> str:
         """Load content from all uploaded materials."""
         content_parts = []
-        
         try:
-            for file_path in self.uploaded_files_dir.iterdir():
-                if file_path.suffix == '.json':  # Skip metadata files
-                    continue
-                    
+            files = [p for p in self.uploaded_files_dir.iterdir() if p.suffix != '.json']
+            if not files:
+                return ""
+            # Parallelize file reads (I/O bound)
+            def _read(p: Path) -> str:
                 try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        content_parts.append(f"=== {file_path.name} ===\n{content}\n")
-                except:
-                    pass
-                    
+                    with open(p, 'r', encoding='utf-8') as f:
+                        return f"=== {p.name} ===\n{f.read()}\n"
+                except Exception:
+                    return ""
+            with ThreadPoolExecutor(max_workers=min(8, len(files))) as ex:
+                futures = [ex.submit(_read, p) for p in files]
+                for fut in as_completed(futures):
+                    part = fut.result()
+                    if part:
+                        content_parts.append(part)
         except Exception as e:
             print(f"Error loading all materials: {e}")
-            
         return "\n".join(content_parts)
         
     def add_to_history(self, interaction: Dict[str, Any]):
@@ -524,12 +531,16 @@ Answer:"""
     def save_chat_history(self):
         """Save chat history to file."""
         try:
+            # Debounce disk writes
+            now = datetime.now().timestamp()
+            if now - self._last_history_save_ts < self._history_save_min_interval:
+                return
             # Keep only last 100 interactions
             if len(self.chat_history) > 100:
                 self.chat_history = self.chat_history[-100:]
-                
             with open(self.chat_history_file, 'w', encoding='utf-8') as f:
                 json.dump(self.chat_history, f, indent=2, ensure_ascii=False)
+            self._last_history_save_ts = now
         except Exception as e:
             print(f"Error saving chat history: {e}")
             

@@ -241,23 +241,24 @@ class CircularProgress(tk.Canvas):
 
 
 class ModernButton(tk.Canvas):
-    """Modern button with rounded corners, hover and click animations."""
-    
-    def __init__(self, parent, text: str, command: Callable, 
+    """Modern button with rounded corners, consistent event handling, and hover/click animations."""
+
+    def __init__(self, parent, text: str, command: Callable,
                  width: int = 200, height: int = 50,
                  bg_color: str = "#6366F1", text_color: str = "#FFFFFF",
                  hover_color: str = "#818CF8", corner_radius: int = 12, **kwargs):
-        # Get the parent's background color, default to a neutral color if not available
-        parent_bg = kwargs.pop('bg', None)
+        # Determine canvas background to blend with parent
+        parent_bg = kwargs.pop("bg", None)
         if parent_bg is None:
             try:
-                parent_bg = parent.cget('bg')
-            except:
-                parent_bg = '#2D2520'  # Default fallback
-        
-        super().__init__(parent, width=width, height=height, 
-                        highlightthickness=0, bg=parent_bg, **kwargs)
-        
+                parent_bg = parent.cget("bg")
+            except Exception:
+                parent_bg = "#2D2520"
+
+        super().__init__(parent, width=width, height=height,
+                         highlightthickness=0, bg=parent_bg, **kwargs)
+
+        # Public properties
         self.text = text
         self.command = command
         self.width = width
@@ -266,179 +267,108 @@ class ModernButton(tk.Canvas):
         self.text_color = text_color
         self.hover_color = hover_color
         self.corner_radius = corner_radius
+        self.semantic_role = 'default'  # can be: primary, danger, muted, neutral, default
+
+        # Internal state
         self.is_hovered = False
         self.is_pressed = False
-        
-        # Create rounded rectangle button
-        self.button_bg = self.create_rounded_rectangle(
-            0, 0, width, height, corner_radius, fill=bg_color, outline=""
-        )
-        
-        # Create text
-        self.text_id = self.create_text(
-            width // 2, height // 2, text=text,
-            font=("Segoe UI", 11, "bold"), fill=text_color
-        )
-        
-        # Bind events
-        self.tag_bind(self.button_bg, "<Enter>", self.on_enter)
-        self.tag_bind(self.button_bg, "<Leave>", self.on_leave)
-        self.tag_bind(self.button_bg, "<Button-1>", self.on_click)
-        self.tag_bind(self.button_bg, "<ButtonRelease-1>", self.on_release)
-        
-        self.bind("<Enter>", self.on_enter)
-        self.bind("<Leave>", self.on_leave)
-        self.bind("<Button-1>", self.on_click)
-        self.bind("<ButtonRelease-1>", self.on_release)
-    
-    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
-        """Create a rounded rectangle."""
+        self._press_inside = False
+
+        # Draw button visuals
+        self._bg_item = self._create_rounded_rectangle(0, 0, width, height, corner_radius,
+                                                       fill=bg_color, outline="")
+        self._text_item = self.create_text(width // 2, height // 2, text=text,
+                                           font=("Segoe UI", 11, "bold"), fill=text_color)
+
+        # Bind events to canvas
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<Button-1>", self._on_click)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        # Bind events to drawn items (background and text)
+        for item in (self._bg_item, self._text_item):
+            self.tag_bind(item, "<Enter>", self._on_enter)
+            self.tag_bind(item, "<Leave>", self._on_leave)
+            self.tag_bind(item, "<Button-1>", self._on_click)
+            self.tag_bind(item, "<ButtonRelease-1>", self._on_release)
+
+    def _create_rounded_rectangle(self, x1, y1, x2, y2, radius: int, **kwargs):
         points = [
             x1 + radius, y1,
-            x1 + radius, y1,
-            x2 - radius, y1,
             x2 - radius, y1,
             x2, y1,
             x2, y1 + radius,
-            x2, y1 + radius,
-            x2, y2 - radius,
             x2, y2 - radius,
             x2, y2,
             x2 - radius, y2,
-            x2 - radius, y2,
-            x1 + radius, y2,
             x1 + radius, y2,
             x1, y2,
             x1, y2 - radius,
-            x1, y2 - radius,
             x1, y1 + radius,
-            x1, y1 + radius,
-            x1, y1
+            x1, y1,
         ]
         return self.create_polygon(points, smooth=True, **kwargs)
-    
-    def on_enter(self, event=None):
-        """Handle mouse enter."""
-        if not self.is_pressed:
-            self.is_hovered = True
-            self.itemconfig(self.button_bg, fill=self.hover_color)
-            self.config(cursor="hand2")
-    
-    def on_leave(self, event=None):
-        """Handle mouse leave."""
+
+    def _pointer_inside(self, event) -> bool:
+        try:
+            x, y = event.x, event.y
+        except Exception:
+            return False
+        return 0 <= x <= self.width and 0 <= y <= self.height
+
+    def _on_enter(self, _event=None):
+        self.is_hovered = True
+        self.itemconfig(self._bg_item, fill=self.hover_color)
+        self.config(cursor="hand2")
+
+    def _on_leave(self, _event=None):
         self.is_hovered = False
         if not self.is_pressed:
-            self.itemconfig(self.button_bg, fill=self.bg_color)
+            self.itemconfig(self._bg_item, fill=self.bg_color)
         self.config(cursor="")
-    
-    def on_click(self, event=None):
-        """Handle mouse click."""
+
+    def _on_click(self, event=None):
         self.is_pressed = True
+        self._press_inside = self._pointer_inside(event)
         # Scale down effect
         self.scale("all", self.width // 2, self.height // 2, 0.95, 0.95)
-    
-    def on_release(self, event=None):
-        """Handle mouse release."""
-        self.is_pressed = False
+
+    def _on_release(self, event=None):
         # Scale back up
-        self.scale("all", self.width // 2, self.height // 2, 1/0.95, 1/0.95)
-        
-        if self.is_hovered:
-            self.itemconfig(self.button_bg, fill=self.hover_color)
-        else:
-            self.itemconfig(self.button_bg, fill=self.bg_color)
-        
-        # Execute command
-        if self.command:
-            self.command()
-    
+        self.scale("all", self.width // 2, self.height // 2, 1 / 0.95, 1 / 0.95)
+        pressed_inside = self._press_inside and self._pointer_inside(event)
+        self.is_pressed = False
+        self._press_inside = False
+
+        self.itemconfig(self._bg_item, fill=self.hover_color if self.is_hovered else self.bg_color)
+
+        if pressed_inside and callable(self.command):
+            try:
+                # Dispatch on main loop to avoid blocking input
+                self.after(0, self.command)
+            except Exception:
+                pass
+
     def configure_text(self, text: str):
-        """Update button text."""
+        """Update the label text."""
         self.text = text
-        self.itemconfig(self.text_id, text=text)
-        super().__init__(parent, width=width, height=height, 
-                        highlightthickness=0, cursor="hand2", **kwargs)
-        
-        self.text = text
-        self.command = command
+        self.itemconfig(self._text_item, text=text)
+
+    def set_colors(self, bg_color: str, text_color: str, hover_color: str):
+        """Update button colors and repaint immediately."""
         self.bg_color = bg_color
         self.text_color = text_color
         self.hover_color = hover_color
-        self.is_hovered = False
-        self.is_pressed = False
-        
-        # Create rounded rectangle
-        self.bg_rect = self.create_rounded_rectangle(
-            2, 2, width - 2, height - 2, radius=10, fill=bg_color, outline=""
-        )
-        
-        # Create text
-        self.text_item = self.create_text(
-            width // 2, height // 2, text=text, 
-            font=("Arial", 12, "bold"), fill=text_color
-        )
-        
-        # Bind events
-        self.bind("<Enter>", self.on_enter)
-        self.bind("<Leave>", self.on_leave)
-        self.bind("<Button-1>", self.on_press)
-        self.bind("<ButtonRelease-1>", self.on_release)
-    
-    def create_rounded_rectangle(self, x1, y1, x2, y2, radius=25, **kwargs):
-        """Create a rounded rectangle."""
-        points = [
-            x1 + radius, y1,
-            x1 + radius, y1,
-            x2 - radius, y1,
-            x2 - radius, y1,
-            x2, y1,
-            x2, y1 + radius,
-            x2, y1 + radius,
-            x2, y2 - radius,
-            x2, y2 - radius,
-            x2, y2,
-            x2 - radius, y2,
-            x2 - radius, y2,
-            x1 + radius, y2,
-            x1 + radius, y2,
-            x1, y2,
-            x1, y2 - radius,
-            x1, y2 - radius,
-            x1, y1 + radius,
-            x1, y1 + radius,
-            x1, y1
-        ]
-        return self.create_polygon(points, smooth=True, **kwargs)
-    
-    def on_enter(self, event):
-        """Handle mouse enter."""
-        self.is_hovered = True
-        self.itemconfig(self.bg_rect, fill=self.hover_color)
-        self.config(bg=self.master.cget('bg'))
-    
-    def on_leave(self, event):
-        """Handle mouse leave."""
-        self.is_hovered = False
-        if not self.is_pressed:
-            self.itemconfig(self.bg_rect, fill=self.bg_color)
-    
-    def on_press(self, event):
-        """Handle mouse press."""
-        self.is_pressed = True
-        # Scale down effect
-        self.scale(tk.ALL, self.winfo_width() // 2, self.winfo_height() // 2, 0.95, 0.95)
-    
-    def on_release(self, event):
-        """Handle mouse release."""
-        self.is_pressed = False
-        # Scale back up
-        self.scale(tk.ALL, self.winfo_width() // 2, self.winfo_height() // 2, 1/0.95, 1/0.95)
-        
-        if self.is_hovered:
-            self.command()
-            self.itemconfig(self.bg_rect, fill=self.hover_color)
-        else:
-            self.itemconfig(self.bg_rect, fill=self.bg_color)
+        # Update visuals
+        try:
+            self.itemconfig(self._bg_item, fill=bg_color)
+            self.itemconfig(self._text_item, fill=text_color)
+        except Exception:
+            pass
+
+    def set_role(self, role: str):
+        """Assign a semantic role (affects theming)."""
+        self.semantic_role = role
 
 
 class ToastNotification:
@@ -530,19 +460,17 @@ class StatCard(tk.Frame):
         """Hover effect."""
         self.config(bg="#4A3F35")
         for child in self.winfo_children():
-            try:
-                child.config(bg="#4A3F35")
-            except:
-                pass
+            cfg = getattr(child, "config", None)
+            if callable(cfg):
+                cfg(bg="#4A3F35")
     
     def on_leave(self, event):
         """Leave hover."""
         self.config(bg=self.bg_color)
         for child in self.winfo_children():
-            try:
-                child.config(bg=self.bg_color)
-            except:
-                pass
+            cfg = getattr(child, "config", None)
+            if callable(cfg):
+                cfg(bg=self.bg_color)
     
     def update_value(self, new_value: str, animated: bool = True):
         """Update the card value."""

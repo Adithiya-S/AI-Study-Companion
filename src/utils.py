@@ -179,6 +179,9 @@ class ConfigManager:
         
         # Load configuration
         self.config = self.load_config()
+        # Cache for theme colors to avoid repeated dict construction
+        self._theme_colors_cache = None
+        self._cached_theme_mode = None
         
     def load_config(self) -> Dict[str, Any]:
         """Load configuration from file."""
@@ -226,11 +229,20 @@ class ConfigManager:
             config = config[key]
             
         config[keys[-1]] = value
+        # Invalidate theme cache if theme mode changed
+        if keys[0] == "theme" and keys[-1] == "mode":
+            self._theme_colors_cache = None
+            self._cached_theme_mode = None
         self.save_config()
         
     def get_theme_colors(self) -> Dict[str, str]:
-        """Get theme color configuration with modern, vibrant colors."""
-        if self.config["theme"]["mode"] == "dark":
+        """Get theme color configuration with modern, vibrant colors (cached)."""
+        current_mode = self.config["theme"]["mode"]
+        # Return cached colors if theme mode unchanged
+        if self._theme_colors_cache and self._cached_theme_mode == current_mode:
+            return self._theme_colors_cache
+        
+        if current_mode == "dark":
             # Modern dark mode with vibrant accents
             return {
                 # Backgrounds
@@ -274,7 +286,7 @@ class ConfigManager:
             }
         else:
             # Modern light mode with clean aesthetics
-            return {
+            colors = {
                 # Backgrounds
                 "bg": "#F8FAFC",              # Very light slate
                 "bg_secondary": "#F1F5F9",     # Light slate
@@ -314,6 +326,11 @@ class ConfigManager:
                 "status_focused": "#10B981",   # Green when focused
                 "status_distracted": "#EF4444" # Red when distracted
             }
+        
+        # Cache and return
+        self._theme_colors_cache = colors
+        self._cached_theme_mode = current_mode
+        return colors
 
 def check_system_compatibility() -> Dict[str, Any]:
     """Check system compatibility and available features."""

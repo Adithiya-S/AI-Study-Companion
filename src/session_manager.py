@@ -7,6 +7,7 @@ import json
 import csv
 import time
 import threading
+import queue
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Callable, Any
@@ -60,6 +61,32 @@ class SessionManager:
         
         # Focus data
         self.focus_events = []
+        
+        # Background save queue to avoid blocking UI on disk writes
+        self._save_queue = queue.Queue()
+        self._save_worker_thread = None
+        self._start_save_worker()
+    
+    def _start_save_worker(self):
+        """Start background thread to process save queue."""
+        def worker():
+            while True:
+                item = self._save_queue.get()
+                if item is None:  # Poison pill to stop
+                    break
+                try:
+                    save_type, data = item
+                    if save_type == "session":
+                        self._do_save_session(data)
+                    elif save_type == "csv":
+                        self._do_save_session_csv(data)
+                except Exception as e:
+                    print(f"Background save error: {e}")
+                finally:
+                    self._save_queue.task_done()
+        
+        self._save_worker_thread = threading.Thread(target=worker, daemon=True)
+        self._save_worker_thread.start()
         
     def set_callbacks(self, session_end_callback: Optional[Callable] = None,
                      break_reminder_callback: Optional[Callable] = None,
@@ -271,32 +298,33 @@ class SessionManager:
         return f"session_{timestamp}"
         
     def save_session(self) -> Dict[str, Any]:
-        """Save current session data to file."""
+        """Queue session data for async save (non-blocking)."""
         if not self.current_session:
             return {}
-            
-        session_file = self.sessions_dir / f"{self.current_session['id']}.json"
         
         # Convert datetime objects to strings for JSON serialization
         session_data = self.current_session.copy()
         session_data["start_time"] = session_data["start_time"].isoformat()
         if session_data["end_time"]:
             session_data["end_time"] = session_data["end_time"].isoformat()
-            
+        
+        # Queue both file and CSV saves
+        self._save_queue.put(("session", session_data.copy()))
+        self._save_queue.put(("csv", session_data.copy()))
+        
+        return session_data
+    
+    def _do_save_session(self, session_data: Dict[str, Any]):
+        """Actually save session to file (called by worker thread)."""
         try:
+            session_file = self.sessions_dir / f"{session_data['id']}.json"
             with open(session_file, 'w', encoding='utf-8') as f:
                 json.dump(session_data, f, indent=2, default=str, ensure_ascii=False)
-                
-            # Also save to CSV for easy analysis
-            self.save_session_csv(session_data)
-            
         except Exception as e:
-            print(f"Error saving session: {e}")
-            
-        return session_data
-        
-    def save_session_csv(self, session_data: Dict[str, Any]):
-        """Save session data to CSV file."""
+            print(f"Error saving session file: {e}")
+    
+    def _do_save_session_csv(self, session_data: Dict[str, Any]):
+        """Actually save session to CSV (called by worker thread)."""
         csv_file = self.sessions_dir / "sessions_log.csv"
         
         headers = [
@@ -429,4 +457,8 @@ class SessionManager:
         self.stop_timer = True
         if self.timer_thread and self.timer_thread.is_alive():
             self.timer_thread.join(timeout=1)
+        # Stop save worker
+        self._save_queue.put(None)
+        if self._save_worker_thread:
+            self._save_worker_thread.join(timeout=2)
         print("Session manager cleaned up")

@@ -347,10 +347,19 @@ class FocusTracker:
             - confidence: Highest confidence score for phone detection
             - bounding_boxes: List of bounding boxes for detected phones and hands [(x1, y1, x2, y2, conf, type), ...]
         """
+        # Throttle heavy YOLO inference to reduce per-frame cost
+        if not hasattr(self, "_last_phone_check_time"):
+            self._last_phone_check_time = 0.0
+            self._last_phone_result = (False, 0.0, None)
+            self._phone_check_interval = 0.6  # seconds
+
         if not self.phone_detection_enabled or self.yolo_model is None:
             return False, 0.0, None
         
         try:
+            now = time.time()
+            if now - self._last_phone_check_time < self._phone_check_interval:
+                return self._last_phone_result
             # Run YOLO inference
             results = self.yolo_model(frame, verbose=False)
             
@@ -406,11 +415,14 @@ class FocusTracker:
                                 max_confidence = max(max_confidence, confidence)
                                 detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone_partial'))
             
-            return phone_detected, max_confidence, detection_boxes if detection_boxes else None
+            result = (phone_detected, max_confidence, detection_boxes if detection_boxes else None)
+            self._last_phone_check_time = now
+            self._last_phone_result = result
+            return result
             
         except Exception as e:
             print(f"Phone detection error: {e}")
-            return False, 0.0, None
+        return False, 0.0, None
     
     def detect_hands_near_face(self, frame, face_landmarks=None) -> Tuple[bool, int, Optional[List]]:
         """
@@ -420,10 +432,19 @@ class FocusTracker:
         Returns:
             Tuple of (hands_near_face, hand_count, hand_boxes)
         """
+        # Throttle hand detection as it is also relatively heavy
+        if not hasattr(self, "_last_hand_check_time"):
+            self._last_hand_check_time = 0.0
+            self._last_hand_result = (False, 0, None)
+            self._hand_check_interval = 0.5  # seconds
+
         if not self.hand_detection_enabled:
             return False, 0, None
         
         try:
+            now = time.time()
+            if now - self._last_hand_check_time < self._hand_check_interval:
+                return self._last_hand_result
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             hand_results = self.hands.process(rgb_frame)
             
@@ -456,7 +477,10 @@ class FocusTracker:
                 else:
                     hand_boxes.append((x_min, y_min, x_max, y_max, 1.0, 'hand'))
             
-            return hands_near_face, hand_count, hand_boxes if hand_boxes else None
+            result = (hands_near_face, hand_count, hand_boxes if hand_boxes else None)
+            self._last_hand_check_time = now
+            self._last_hand_result = result
+            return result
             
         except Exception as e:
             print(f"Hand detection error: {e}")
@@ -635,13 +659,13 @@ class FocusTracker:
         }
         
     def process_frame(self):
-        """Process current camera frame and return annotated frame."""
+        """Process current camera frame and return (annotated_frame, focus_data)."""
         if not self.camera or not self.camera.isOpened():
-            return None
+            return None, None
             
         ret, frame = self.camera.read()
         if not ret:
-            return None
+            return None, None
             
         # Flip horizontally for mirror effect
         frame = cv2.flip(frame, 1)
@@ -735,7 +759,7 @@ class FocusTracker:
         cv2.putText(frame, f"Thresholds: P±{self.HEAD_PITCH_THRESHOLD} Y±{self.HEAD_YAW_THRESHOLD}", 
                    (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         
-        return frame
+        return frame, focus_data
         
     def get_session_stats(self) -> Dict:
         """Get statistics for current tracking session."""
