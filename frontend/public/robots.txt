@@ -1,0 +1,9 @@
+# AURA AI Study Companion Robots Exclusion File
+User-agent: *
+Allow: /
+Allow: /#privacy
+Allow: /#terms
+Disallow: /api/
+Disallow: /dashboard
+
+Sitemap: https://aura-study.internal/sitemap.xml

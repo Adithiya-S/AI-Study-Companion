@@ -1,213 +1,214 @@
-# Study Focus App - Python 3.11 Recommended
+# AURA — AI Deep Focus & Biometric Telemetry Companion
 
-A powerful Python-based study productivity application with real-time eye tracking using MediaPipe.
+A full-stack AI-powered study productivity platform with real-time browser-based eye tracking, biometric focus scoring, adaptive Pomodoro timers, Gemini AI tutoring, flashcards, and live session analytics.
 
-## 🐍 Python Version Compatibility
+## 🏗️ Architecture
 
-**✅ RECOMMENDED:** Python 3.11 (Best compatibility)  
-**✅ Supported:** Python 3.8, 3.9, 3.10, 3.12  
-**⚠️ NOT Compatible:** Python 3.13+ (MediaPipe issues - camera will NOT work)
-
-### Why Python 3.11?
-- Perfect compatibility with MediaPipe (eye tracking)
-- All features guaranteed to work
-- Extensively tested and verified
-- Best performance
-
-### Installing Python 3.11
-Download from: https://www.python.org/downloads/release/python-3110/
-
-After installation, you can run the app with:
-```bash
-py -3.11 main.py
+```
+AI-Study-Companion/
+├── backend/              # FastAPI + SQLAlchemy (SQLite)
+│   ├── server.py         # App entry, CORS, rate limiting
+│   ├── db.py             # SQLAlchemy models
+│   ├── auth.py           # JWT + bcrypt
+│   ├── config.py         # Env config
+│   └── routes/
+│       ├── auth_routes.py       # Register, login, Google OAuth, stats
+│       ├── session_routes.py    # Start/end sessions, analytics
+│       ├── materials_routes.py  # File upload, flashcards, RAG
+│       ├── ai_routes.py         # Gemini AI chat
+│       └── vision_routes.py     # Eye tracking vision helpers
+├── frontend/             # React 19 + Vite + TailwindCSS
+│   └── src/
+│       ├── components/
+│       │   ├── dashboard/       # Full workspace UI
+│       │   ├── landing/         # Public landing page
+│       │   ├── auth/            # Login / register
+│       │   └── ui/              # Shared design components
+│       └── lib/                 # Audio, utilities
+├── data/                 # SQLite DB + uploaded study files
+├── main.py               # Convenience launcher
+└── requirements.txt      # Python dependencies
 ```
 
 ## 🚀 Quick Start
 
-### Option 1: Automated Setup with Python 3.11 (Best)
+### Prerequisites
+- **Python 3.11** (recommended) — 3.8–3.12 supported
+- **Node.js 18+**
+- **Google Gemini API key** — free at [aistudio.google.com](https://aistudio.google.com/app/apikey)
+- **Google OAuth Client ID** — free at [console.cloud.google.com](https://console.cloud.google.com)
+
+### 1. Clone & Configure Environment
+
 ```bash
-# Automatically finds and uses Python 3.11
-run_python311.bat
+git clone <repo-url>
+cd AI-Study-Companion
+
+# Copy and fill in your keys
+cp .env.example .env
 ```
 
-### Option 2: One-Click Setup
+Edit `.env`:
+```env
+DATABASE_URL=sqlite:///data/study_companion.db
+JWT_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
+GEMINI_API_KEY=your_gemini_api_key_here
+ENVIRONMENT=development
+```
+
+### 2. Install Python Dependencies
+
 ```bash
-# Installs dependencies and runs integrity check
-setup.bat
+pip install -r requirements.txt
 ```
 
-### Option 3: Java Launcher (Auto-detects Python 3.11)
+### 3. Install Frontend Dependencies
+
 ```bash
-run_launcher.bat
+cd frontend
+npm install
 ```
 
-### Option 4: Manual Installation
+### 4. Run (Development — Two Terminals)
+
+**Terminal 1 — Backend (FastAPI + hot-reload):**
 ```bash
-# Install dependencies with Python 3.11
-py -3.11 -m pip install -r requirements.txt
-
-# Run the app
-py -3.11 main.py
+python -m uvicorn backend.server:app --reload --port 8000
 ```
 
-## ✨ Features
-
-### 🎦 Real-Time Eye Tracking
-- **MediaPipe integration** for accurate face and eye detection
-- **Eye Aspect Ratio (EAR) analysis** to detect blinks and attention
-- **Gaze direction tracking** (left, center, right)
-- **Head pose estimation** for comprehensive focus analysis
-
-### 📊 Advanced Focus Analysis  
-- **Multi-factor focus scoring** combining eye state, gaze, and head pose
-- **Distraction detection** with customizable sensitivity
-- **Real-time alerts** when attention wavers
-- **Detailed analytics** and session reports
-
-### ⏱️ Session Management
-- **Customizable study timers** (1-180 minutes)
-- **Break reminders** with short and long break options
-- **Pause/resume functionality** 
-- **Session statistics** and progress tracking
-
-### 📚 Study Materials
-- **Quick links** to online resources
-- **Built-in study techniques** (Pomodoro, Active Recall, etc.)
-- **Daily motivation** quotes and tips
-- **Resource management** system
-- **🤖 AI Study Assistant** powered by Google Gemini
-  - Ask questions with internet knowledge
-  - Query your uploaded study materials
-  - Smart context-aware responses
-  - Chat history and conversation tracking
-
-### 🤖 AI Study Assistant (NEW!)
-- **Dual-Mode Intelligence:**
-  - 🌐 **Internet Mode:** Get answers from the web
-  - 📚 **Materials Mode:** Query only your uploaded study materials
-- **Multi-Format Document Support:**
-  - 📄 **PDF files** - Extract text from PDF documents
-  - 📝 **Word documents** - .docx and .doc files
-  - 📊 **PowerPoint presentations** - .pptx and .ppt files
-  - 📈 **Excel spreadsheets** - .xlsx and .xls files
-  - 📁 **Text & Code files** - .txt, .md, .py, .java, .cpp, .js, .html, .css, .json, etc.
-- **Smart Responses:** Context-aware answers based on mode
-- **Chat History:** Review past conversations
-- **Material Management:** Upload, organize, and delete study materials
-- **Pre-configured:** No API key setup needed for users - administrator sets up once!
-- See [ADMIN_SETUP.md](ADMIN_SETUP.md) for initial configuration (admin only)
-
-### 📈 Productivity Reports
-- **Session completion rates** and efficiency metrics
-- **Focus percentage** trends over time
-- **Distraction pattern analysis**
-- **CSV/JSON export** for external analysis
-
-## 🔧 System Requirements
-
-- **Python:** 3.8 - 3.12 (3.13+ not supported yet)
-- **Camera:** Built-in or external webcam (720p recommended)
-- **RAM:** 4GB minimum (8GB recommended)
-- **OS:** Windows 10+, macOS 10.14+, or Linux
-
-## 📦 Dependencies
-
-All dependencies are automatically installed via `requirements.txt`:
-
-- **opencv-python** - Camera access and image processing
-- **mediapipe** - Face mesh and eye tracking  
-- **numpy** - Numerical computations
-- **pandas** - Data analysis and CSV handling
-- **matplotlib** - Plotting and visualizations
-- **pillow** - Image processing for GUI
-- **pygame** - Audio alerts
-- **plyer** - Cross-platform notifications
-- **google-generativeai** - Gemini AI integration (for AI assistant)
-- **PyPDF2** - PDF document parsing
-- **python-docx** - Word document (.docx) parsing
-- **python-pptx** - PowerPoint presentation parsing
-- **openpyxl** - Excel spreadsheet parsing
-- **tkinter** - GUI framework (included with Python)
-
-## 🎯 How It Works
-
-### Eye Tracking Algorithm
-1. **Face Detection:** MediaPipe detects face landmarks in real-time
-2. **Eye Analysis:** Calculates Eye Aspect Ratio (EAR) to determine if eyes are open
-3. **Gaze Tracking:** Analyzes iris position relative to eye corners
-4. **Head Pose:** Estimates pitch, yaw, and roll angles
-5. **Focus Scoring:** Combines all metrics into a focus score (0.0-1.0)
-
-### Focus Detection Formula
-```
-Focus Score = (Eye Openness × 0.4) + (Gaze Direction × 0.35) + (Head Pose × 0.25)
-
-Where:
-- Eye Openness: Based on EAR threshold (typically 0.25)
-- Gaze Direction: Center gaze scores highest
-- Head Pose: Upright position scores highest
+**Terminal 2 — Frontend (Vite HMR):**
+```bash
+cd frontend && npm run dev
 ```
 
-## ⚙️ Configuration
+Open **http://localhost:5173** in your browser.
 
-### Focus Sensitivity Settings
-- **High:** More strict distraction detection (fewer false negatives)
-- **Medium:** Balanced detection (default)  
-- **Low:** More lenient detection (fewer false positives)
+### Run as Single Process (Production / Quick Launch)
 
-### Camera Settings
-- **Resolution:** 640x480 (default) up to 1920x1080
-- **FPS:** 30 (recommended)
-- **Camera Index:** 0 (default), try 1, 2 for external cameras
+Build the frontend first, then serve everything from FastAPI:
+```bash
+cd frontend && npm run build && cd ..
+python main.py
+```
 
-## 📖 Usage Tips
-
-### Optimal Setup
-- **Lighting:** Good, even lighting on your face (avoid backlighting)
-- **Distance:** Position camera 2-3 feet from your face
-- **Angle:** Camera at eye level for best head pose detection
-- **Background:** Minimize distracting elements behind you
-
-### Getting Started
-1. Launch the app using one of the start methods above
-2. Allow camera permissions when prompted
-3. Position yourself in camera view and test focus detection
-4. Set your study duration and start a session
-5. Study normally - the app will alert you if you become distracted
-
-## 🔍 Troubleshooting
-
-### Common Issues
-
-**Camera not working:**
-- Check camera permissions in system settings
-- Try different camera index (0, 1, 2) in settings
-- Ensure camera isn't used by other applications
-
-**Poor focus detection:**
-- Improve lighting conditions
-- Adjust camera position and angle
-- Calibrate focus sensitivity in settings
-
-**Python version error:**
-- Verify Python version: `python --version`
-- Use Python 3.8-3.12 only
-- Consider using pyenv for version management
-
-**Dependency installation fails:**
-- Update pip: `pip install --upgrade pip`
-- Try: `pip install --no-cache-dir -r requirements.txt`
-- On Linux: `sudo apt-get install python3-opencv`
-
-
-## 🙏 Acknowledgments
-
-- **MediaPipe Team** - Advanced face detection and tracking
-- **OpenCV Community** - Computer vision framework
-- **Python Community** - Amazing ecosystem of libraries
+Opens **http://127.0.0.1:8000** automatically in your browser.
 
 ---
 
-**Ready to focus better?** 🎯
+## ✨ Features
 
-*Start your productive study session today!*
+### 👁️ Real-Time Biometric Eye Tracking
+- MediaPipe Face Mesh in-browser (WASM) — no Python camera dependency
+- Eye Aspect Ratio (EAR) blink and closure detection
+- Gaze direction and iris tracking
+- Live focus score (0–100%) computed per frame
+
+### ⏱️ Adaptive Study Timer
+- **Pomodoro** (25 min), **Deep Work** (50 min), **Break** (5 min) modes
+- Session start/end synced to backend DB automatically
+- Live distraction logging during active sessions
+- Confetti + audio on completion
+
+### 📊 Session Analytics
+- Per-user live dashboard: total hours, sessions, avg focus score, streak
+- Period filter: 1D / 7D / 14D / 30D
+- Bar chart: study time distribution by day or time-of-day
+- Line chart: focus score trend across sessions
+- Full session history table with CSV export
+
+### 🤖 Gemini AI Study Tutor
+- **Internet mode**: general knowledge questions via Gemini 2.0 Flash
+- **Materials mode**: RAG over your uploaded documents (PDF, DOCX, PPTX, XLSX, TXT)
+- Persistent chat history per tab session
+- Markdown rendering with syntax highlighting
+
+### 📚 Materials & Flashcards
+- Upload study documents → indexed for AI tutor context
+- Create, shuffle, flip, and master flashcards
+- AI auto-generate flashcards from your uploaded materials
+- Quick-link bookmarks for study resources
+
+### 🔐 Authentication
+- Email + password register/login (bcrypt + JWT)
+- Google OAuth one-click sign-in (Google Identity Services)
+- All data is user-scoped and isolated
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables (`.env`)
+
+| Variable | Description | Default |
+|---|---|---|
+| `DATABASE_URL` | SQLAlchemy connection string | `sqlite:///data/study_companion.db` |
+| `JWT_SECRET` | Secret for signing JWT tokens | *(required)* |
+| `GEMINI_API_KEY` | Google Gemini AI key | *(required)* |
+| `GOOGLE_CLIENT_ID` | Google OAuth client ID | *(set in frontend config)* |
+| `ENVIRONMENT` | `development` or `production` | `development` |
+
+### Focus Sensitivity
+Configurable per-user from the **Configuration** tab in the workspace:
+- **High** — strict distraction detection (best for distraction-prone environments)
+- **Medium** — balanced (default)
+- **Low** — lenient (useful for reading or note-taking)
+
+---
+
+## 📦 Tech Stack
+
+### Backend
+| Package | Purpose |
+|---|---|
+| `fastapi` | REST API framework |
+| `uvicorn` | ASGI server |
+| `sqlalchemy` | ORM + SQLite |
+| `google-genai` | Gemini 2.0 Flash AI |
+| `google-auth` | Google OAuth token verification |
+| `python-multipart` | File upload handling |
+| `PyPDF2` / `python-docx` / `python-pptx` / `openpyxl` | Document parsing for RAG |
+| `opencv-python` / `mediapipe` / `numpy` | Vision helpers (backend-side) |
+
+### Frontend
+| Package | Purpose |
+|---|---|
+| `react 19` | UI framework |
+| `vite` | Build tool + HMR dev server |
+| `tailwindcss` | Utility CSS |
+| `framer-motion` | Animations |
+| `chart.js` + `react-chartjs-2` | Analytics charts |
+| `@mediapipe/face_mesh` | In-browser eye tracking (WASM) |
+| `react-markdown` + `remark-gfm` | AI response rendering |
+| `lucide-react` | Icon set |
+| `canvas-confetti` | Session completion celebration |
+
+---
+
+## 🔍 Troubleshooting
+
+**Camera not working in browser:**
+- Grant camera permission when prompted
+- Ensure no other app is using the webcam
+- Use HTTPS or `localhost` — browser blocks camera on plain HTTP remote URLs
+
+**Backend won't start:**
+- Verify `.env` exists and `GEMINI_API_KEY` is set
+- Check Python version: `python --version` (3.11 recommended)
+- Run `pip install -r requirements.txt` to ensure all deps are installed
+
+**Frontend won't connect to API:**
+- Confirm backend is running on port `8000`
+- CORS is pre-configured for `localhost:5173` and `localhost:3000`
+
+**Analytics shows zeros after sessions:**
+- Sessions only record when started with the timer **Start Sprint** button
+- Data updates live — switch to the Session Recap tab to see results
+
+---
+
+## 🙏 Acknowledgments
+
+- **Google MediaPipe** — In-browser face mesh & iris tracking
+- **Google Gemini** — Multimodal AI tutoring
+- **FastAPI** — High-performance Python web framework
+- **Framer Motion** — Production-quality React animations

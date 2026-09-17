@@ -1,179 +1,95 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Study Focus App - Advanced Eye Tracking Study Assistant
-Compatible with Python 3.8 - 3.12
-
-Main entry point for the application.
+AURA // AI Deep Focus & Telemetry Companion
+Full-Stack Web Application (FastAPI + React + Vite)
 """
 
 import sys
 import os
+import webbrowser
+import threading
+import time
 from pathlib import Path
 
-# Add src directory to Python path
+# Set UTF-8 for console output on Windows
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 current_dir = Path(__file__).parent
-src_dir = current_dir / "src"
-sys.path.insert(0, str(src_dir))
+sys.path.insert(0, str(current_dir))
 
-# Fix encoding for Windows console
-if sys.platform == 'win32':
+
+def open_browser(url: str = "http://127.0.0.1:8000"):
+    time.sleep(1.5)
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except AttributeError:
-        import codecs
-        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+        webbrowser.open(url)
+    except Exception:
+        pass
 
-def check_python_version():
-    """
-    Check Python version compatibility.
-    """
-    version = sys.version_info
 
-    print(f"🐍 Detected Python {version.major}.{version.minor}.{version.micro}")
+def run_web_app(host: str = "127.0.0.1", port: int = 8000):
+    print("=" * 65)
+    print("⚡ AURA // AI DEEP FOCUS & BIOMETRIC TELEMETRY PLATFORM")
+    print("   Architecture: FastAPI + React 19 + SQLite")
+    print(f"   Listening on: http://{host}:{port}")
+    print("=" * 65)
 
-    if version < (3, 8):
-        print("❌ ERROR: Python 3.8 or higher is required")
-        print("Please upgrade to Python 3.11 for best compatibility")
-        return False
-    elif version.major == 3 and version.minor == 11:
-        print("✅ PERFECT: Python 3.11 detected - Optimal version!")
-        return True
-    elif version >= (3, 13):
-        print("⚠️  WARNING: Python 3.13+ is not officially supported")
-        print("MediaPipe has compatibility issues with Python 3.13+")
-        print("STRONGLY RECOMMENDED: Use Python 3.11 for full functionality")
-        print("The app will attempt to run, but camera features will likely NOT work")
-        return True  # Allow running for testing UI
-    elif version.major == 3 and 8 <= version.minor <= 12:
-        print("✅ COMPATIBLE: Python version supported")
-        print("💡 Note: Python 3.11 is recommended for optimal performance")
-        return True
+    # Open browser in background after server is ready
+    threading.Thread(target=open_browser, args=(f"http://{host}:{port}",), daemon=True).start()
 
-    return False
+    import uvicorn
+    uvicorn.run("backend.server:app", host=host, port=port, reload=False)
 
-def check_dependencies():
-    """
-    Check if all required dependencies are installed.
-    """
-    required_packages = [
-        ('cv2', 'opencv-python'),
-        ('mediapipe', 'mediapipe'),
-        ('numpy', 'numpy'),
-        ('pandas', 'pandas'), 
-        ('PIL', 'pillow'),
-        ('matplotlib', 'matplotlib'),
-        ('pygame', 'pygame'),
-        ('plyer', 'plyer')
-    ]
-
-    missing_packages = []
-
-    print("\n🔍 Checking dependencies...\n")
-
-    for import_name, package_name in required_packages:
-        try:
-            __import__(import_name)
-            print(f"✅ {package_name}")
-        except ImportError:
-            print(f"❌ {package_name} (missing)")
-            missing_packages.append(package_name)
-
-    # Check tkinter separately (built-in)
-    try:
-        import tkinter
-        print("✅ tkinter (GUI support)")
-    except ImportError:
-        print("❌ tkinter (GUI will not work)")
-        missing_packages.append("tkinter")
-
-    if missing_packages:
-        print(f"\n❌ Missing required packages: {', '.join(missing_packages)}")
-        print("Install with:")
-        print("   pip install -r requirements.txt")
-        return False
-
-    print("\n✅ All dependencies available!")
-    return True
-
-def check_camera():
-    """
-    Check if camera is available.
-    """
-    try:
-        import cv2
-        cap = cv2.VideoCapture(0)
-        if cap.isOpened():
-            print("✅ Camera detected and accessible")
-            cap.release()
-            return True
-        else:
-            print("⚠️  Camera not detected or in use by another application")
-            print("Eye tracking may not work properly")
-            return False
-    except Exception as e:
-        print(f"⚠️  Camera check failed: {e}")
-        return False
 
 def main():
-    """
-    Main application entry point.
-    """
-    print("🎯 STUDY FOCUS APP - ADVANCED EYE TRACKING ASSISTANT")
-    print("=" * 60)
+    args = sys.argv[1:]
 
-    # Check Python version compatibility
-    if not check_python_version():
-        print("\n❌ Incompatible Python version. Exiting.")
-        input("Press Enter to exit...")
-        sys.exit(1)
+    if "--help" in args or "-h" in args:
+        print("""
+AURA AI Study Companion - Command Line Interface
 
-    # Check dependencies
-    if not check_dependencies():
-        print("\n❌ Missing required dependencies. Please install them first.")
-        input("Press Enter to exit...")
-        sys.exit(1)
+Usage:
+  python main.py          Start the web application and launch browser
+  python main.py --dev    Print development server instructions (HMR mode)
+  python main.py --host   Bind to 0.0.0.0 for LAN access
 
-    # Check camera (optional but recommended)
-    camera_ok = check_camera()
+Options:
+  --host    Bind to all interfaces (0.0.0.0) instead of localhost
+  --port N  Override default port (default: 8000)
+""")
+        return
 
-    if not camera_ok:
-        print("\n⚠️  Camera issues detected.")
-        response = input("Continue without camera? (y/n): ").lower()
-        if response != 'y':
-            sys.exit(0)
+    if "--dev" in args:
+        print("""
+[DEVELOPMENT MODE - Hot Module Replacement]
 
-    try:
-        print("\n🚀 Loading Study Focus App...")
+Terminal 1 — FastAPI backend with auto-reload:
+   python -m uvicorn backend.server:app --reload --port 8000
 
-        # Import and run Modern GUI
-        from gui_manager_modern import ModernStudyFocusGUI
+Terminal 2 — Vite dev server with HMR:
+   cd frontend && npm run dev
 
-        app = ModernStudyFocusGUI()
-        app.run()
+Open http://localhost:5173 in your browser.
+API is available at http://localhost:8000
+""")
+        return
 
-    except ImportError as e:
-        print(f"❌ Error importing application modules: {e}")
-        print("Make sure all source files are present in the src/ directory.")
+    # Parse optional host / port overrides
+    host = "0.0.0.0" if "--host" in args else "127.0.0.1"
+    port = 8000
+    if "--port" in args:
+        idx = args.index("--port")
+        try:
+            port = int(args[idx + 1])
+        except (IndexError, ValueError):
+            pass
 
-        print("\n💡 Troubleshooting tips:")
-        print("1. Ensure all files are properly extracted")
-        print("2. Check that src/ directory contains all Python modules")
-        print("3. Verify Python version is 3.8-3.12")
-        print("4. Reinstall dependencies with: pip install -r requirements.txt")
+    run_web_app(host=host, port=port)
 
-        input("Press Enter to exit...")
-        sys.exit(1)
-    except KeyboardInterrupt:
-        print("\n⏹️  Application interrupted by user.")
-        sys.exit(0)
-    except Exception as e:
-        print(f"❌ An unexpected error occurred: {e}")
-        import traceback
-        traceback.print_exc()
-        print("\n💡 Please report this error with the traceback above.")
-        input("Press Enter to exit...")
-        sys.exit(1)
 
 if __name__ == "__main__":
     main()

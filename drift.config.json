@@ -1,0 +1,5 @@
+{
+  "database": {
+    "url": "postgres://drift:driftpassword@localhost:5432/study_companion"
+  }
+}
