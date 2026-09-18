@@ -544,6 +544,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           isDetectingPhoneRef.current = true;
           try {
             offscreenCtx.drawImage(videoRef.current, 0, 0, offscreenW, offscreenH);
+            const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.72);
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3500);
 
