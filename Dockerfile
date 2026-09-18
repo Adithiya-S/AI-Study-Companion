@@ -21,12 +21,14 @@ COPY requirements.txt /app/
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
-# Copy application source code and YOLO model
+# Copy application source code
 COPY backend/ /app/backend/
 COPY src/ /app/src/
 COPY main.py /app/main.py
-COPY yolov8n.pt /app/yolov8n.pt
-COPY data/ /app/data/
+
+# Create runtime directories & pre-cache YOLOv8 nano weights inside image
+RUN mkdir -p /app/data /app/data/materials && \
+    python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
 
 # Expose container port
 EXPOSE 8000
