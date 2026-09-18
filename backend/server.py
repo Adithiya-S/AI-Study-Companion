@@ -92,18 +92,24 @@ async def spam_protection_middleware(request: Request, call_next):
 # ---------------------------------------------------------------------------
 # CORS CONFIGURATION
 # ---------------------------------------------------------------------------
+frontend_env = os.getenv("FRONTEND_URL", "")
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    os.getenv("FRONTEND_URL", "http://localhost:5173"),
 ]
+if frontend_env:
+    for url in frontend_env.split(","):
+        clean_url = url.strip().rstrip("/")
+        if clean_url and clean_url not in ALLOWED_ORIGINS:
+            ALLOWED_ORIGINS.append(clean_url)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -27,6 +27,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR / 'study_companio
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
+# Ensure sslmode=require for remote cloud postgres (Supabase) if not present
+if DATABASE_URL.startswith("postgresql://") and "sslmode=" not in DATABASE_URL and "localhost" not in DATABASE_URL and "127.0.0.1" not in DATABASE_URL:
+    delimiter = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{delimiter}sslmode=require"
+
 # Security & API
 JWT_SECRET = os.getenv("JWT_SECRET", "aura_deep_focus_secret_key_9981")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
