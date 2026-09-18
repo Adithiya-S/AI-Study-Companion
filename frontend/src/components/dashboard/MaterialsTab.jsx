@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Upload, FileText, CheckCircle2, RotateCw, ExternalLink, Plus, BookOpen, Layers, Compass, Trash2, Quote, Sparkles, X, Shuffle, Check } from "lucide-react";
 import { GlowBadge } from "../ui/GlowBadge";
 import { MagneticButton } from "../ui/MagneticButton";
+import { apiUrl } from "../../lib/api";
 
 export const MaterialsTab = ({ user }) => {
   const [activeTab, setActiveTab] = useState("flashcards"); // "flashcards" | "files" | "links"
@@ -27,7 +28,7 @@ export const MaterialsTab = ({ user }) => {
   const fetchFlashcards = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/materials/flashcards?user_id=${user.id}`);
+      const res = await fetch(apiUrl(`/api/materials/flashcards?user_id=${user.id}`));
       if (res.ok) {
         const data = await res.json();
         setFlashcards(data || []);
@@ -40,7 +41,7 @@ export const MaterialsTab = ({ user }) => {
   };
 
   const fetchMotivation = () => {
-    fetch("http://127.0.0.1:8000/api/materials/daily-motivation")
+    fetch(apiUrl("/api/materials/daily-motivation"))
       .then((r) => r.json())
       .then((data) => {
         setDailyQuote(data.quote || "The expert in anything was once a beginner.");
@@ -51,14 +52,14 @@ export const MaterialsTab = ({ user }) => {
 
   const fetchDocuments = () => {
     if (!user?.id) return;
-    fetch(`http://127.0.0.1:8000/api/materials/documents?user_id=${user.id}`)
+    fetch(apiUrl(`/api/materials/documents?user_id=${user.id}`))
       .then((r) => r.json())
       .then((data) => setDocuments(data || []))
       .catch((e) => console.log("Documents fetch note:", e));
   };
 
   const fetchLinks = () => {
-    fetch("http://127.0.0.1:8000/api/materials/links")
+    fetch(apiUrl("/api/materials/links"))
       .then((r) => r.json())
       .then((data) => setQuickLinks(data))
       .catch((e) => console.log("Links fetch note:", e));
@@ -83,7 +84,7 @@ export const MaterialsTab = ({ user }) => {
     if (known && currentCard && currentCard.id) {
       setKnownCount((prev) => prev + 1);
       try {
-        await fetch(`http://127.0.0.1:8000/api/materials/flashcards/${currentCard.id}/mastered`, {
+        await fetch(apiUrl(`/api/materials/flashcards/${currentCard.id}/mastered`), {
           method: "PATCH",
         });
         setFlashcards((prev) =>
@@ -107,7 +108,7 @@ export const MaterialsTab = ({ user }) => {
     e.preventDefault();
     if (!newCard.question.trim() || !newCard.answer.trim() || !user?.id) return;
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/materials/flashcards", {
+      const res = await fetch(apiUrl("/api/materials/flashcards"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...newCard, user_id: user.id }),
@@ -129,7 +130,7 @@ export const MaterialsTab = ({ user }) => {
     if (!user?.id) return;
     setIsGeneratingCards(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/materials/flashcards/generate", {
+      const res = await fetch(apiUrl("/api/materials/flashcards/generate"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: user.id }),
@@ -153,7 +154,7 @@ export const MaterialsTab = ({ user }) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this flashcard?")) return;
     try {
-      await fetch(`http://127.0.0.1:8000/api/materials/flashcards/${cardId}`, { method: "DELETE" });
+      await fetch(apiUrl(`/api/materials/flashcards/${cardId}`), { method: "DELETE" });
       setFlashcards((prev) => {
         const updated = prev.filter((c) => c.id !== cardId);
         if (currentCardIdx >= updated.length) setCurrentCardIdx(Math.max(0, updated.length - 1));
@@ -184,7 +185,7 @@ export const MaterialsTab = ({ user }) => {
     formData.append("user_id", user.id);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/materials/upload", {
+      const res = await fetch(apiUrl("/api/materials/upload"), {
         method: "POST",
         body: formData,
       });
@@ -206,7 +207,7 @@ export const MaterialsTab = ({ user }) => {
     e.stopPropagation();
     if (!confirm("Are you sure you want to remove this document from your study library?")) return;
     try {
-      await fetch(`http://127.0.0.1:8000/api/materials/documents/${docId}`, { method: "DELETE" });
+      await fetch(apiUrl(`/api/materials/documents/${docId}`), { method: "DELETE" });
       fetchDocuments();
     } catch (err) {
       console.warn("Delete doc error:", err);
@@ -218,7 +219,7 @@ export const MaterialsTab = ({ user }) => {
     if (!newLink.name.trim() || !newLink.url.trim()) return;
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/materials/links", {
+      const res = await fetch(apiUrl("/api/materials/links"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newLink),
@@ -238,7 +239,7 @@ export const MaterialsTab = ({ user }) => {
     e.stopPropagation();
     if (!confirm(`Remove quick link "${linkName}"?`)) return;
     try {
-      await fetch(`http://127.0.0.1:8000/api/materials/links/${encodeURIComponent(linkName)}`, {
+      await fetch(apiUrl(`/api/materials/links/${encodeURIComponent(linkName)}`), {
         method: "DELETE",
       });
       fetchLinks();

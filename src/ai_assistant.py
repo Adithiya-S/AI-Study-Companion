@@ -18,11 +18,20 @@ except ImportError:
     DOTENV_AVAILABLE = False
     
 try:
-    import google.generativeai as genai
+    from google import genai
     GEMINI_AVAILABLE = True
+    USE_GENAI_SDK = True
 except ImportError:
-    GEMINI_AVAILABLE = False
-    print("Warning: google-generativeai not installed. AI features will be disabled.")
+    try:
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import google.generativeai as genai
+        GEMINI_AVAILABLE = True
+        USE_GENAI_SDK = False
+    except ImportError:
+        GEMINI_AVAILABLE = False
+        USE_GENAI_SDK = False
 
 # Document parsing libraries
 try:
@@ -107,14 +116,17 @@ class AIAssistant:
             if not self.api_key:
                 return False
                 
-            genai.configure(api_key=self.api_key)
-            
-            # Use Gemini 2.0 Flash model (stable, latest generation)
-            # Alternatives: 'gemini-1.5-flash', 'gemini-1.5-pro'
-            self.model = genai.GenerativeModel('gemini-2.0-flash')
-            
-            # Start a new chat session
-            self.chat_session = self.model.start_chat(history=[])
+            if USE_GENAI_SDK:
+                self.client = genai.Client(api_key=self.api_key)
+                self.model = "gemini-2.0-flash"
+                try:
+                    self.chat_session = self.client.chats.create(model=self.model)
+                except Exception:
+                    self.chat_session = None
+            else:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel('gemini-2.0-flash')
+                self.chat_session = self.model.start_chat(history=[])
             
             return True
             
@@ -555,7 +567,13 @@ Answer:"""
         
         # Reset chat session
         if self.model:
-            self.chat_session = self.model.start_chat(history=[])
+            if USE_GENAI_SDK and hasattr(self, 'client') and self.client:
+                try:
+                    self.chat_session = self.client.chats.create(model=self.model)
+                except Exception:
+                    self.chat_session = None
+            elif hasattr(self.model, 'start_chat'):
+                self.chat_session = self.model.start_chat(history=[])
     
     def get_chat_sessions(self) -> List[Dict[str, Any]]:
         """Get list of chat sessions grouped by timestamp."""
@@ -606,5 +624,11 @@ Answer:"""
     def start_new_chat(self):
         """Start a fresh chat session without loading history."""
         if self.model:
-            self.chat_session = self.model.start_chat(history=[])
+            if USE_GENAI_SDK and hasattr(self, 'client') and self.client:
+                try:
+                    self.chat_session = self.client.chats.create(model=self.model)
+                except Exception:
+                    self.chat_session = None
+            elif hasattr(self.model, 'start_chat'):
+                self.chat_session = self.model.start_chat(history=[])
         return True

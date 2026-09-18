@@ -14,6 +14,7 @@ import {
 import { Bar, Line } from "react-chartjs-2";
 import { Download, Calendar, BarChart2, TrendingUp, CheckCircle, Clock, Zap, Target, AlertCircle } from "lucide-react";
 import { GlowBadge } from "../ui/GlowBadge";
+import { apiUrl } from "../../lib/api";
 
 ChartJS.register(
   CategoryScale,
@@ -35,7 +36,7 @@ export const AnalyticsTab = ({ user, refreshKey }) => {
   useEffect(() => {
     if (!user?.id) return;
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/api/sessions/analytics?user_id=${user.id}&period=${period}`)
+    fetch(apiUrl(`/api/sessions/analytics?user_id=${user.id}&period=${period}`))
       .then((r) => r.json())
       .then((data) => {
         setAnalytics(data);

@@ -8,6 +8,7 @@ import { MaterialsTab } from "./MaterialsTab";
 import { AnalyticsTab } from "./AnalyticsTab";
 import { SettingsTab } from "./SettingsTab";
 import { GlowBadge } from "../ui/GlowBadge";
+import { apiUrl } from "../../lib/api";
 
 export const DashboardLayout = ({ user, onSignOut }) => {
   const [activeTab, setActiveTab] = useState("hub"); // "hub" | "ai" | "materials" | "analytics" | "settings"
@@ -24,7 +25,7 @@ export const DashboardLayout = ({ user, onSignOut }) => {
   const fetchUserStats = useCallback(async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/auth/user/${user.id}/stats`);
+      const res = await fetch(apiUrl(`/api/auth/user/${user.id}/stats`));
       if (res.ok) {
         const data = await res.json();
         setUserStats({

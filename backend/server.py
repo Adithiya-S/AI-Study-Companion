@@ -1,11 +1,18 @@
 import os
+import sys
 import time
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
+
+# Ensure project root is in sys.path for reliable module imports
+BASE_DIR = Path(__file__).resolve().parent.parent
+if str(BASE_DIR) not in sys.path:
+    sys.path.insert(0, str(BASE_DIR))
 
 from .db import init_db
 from .routes.auth_routes import router as auth_router
@@ -14,10 +21,18 @@ from .routes.ai_routes import router as ai_router
 from .routes.materials_routes import router as materials_router
 from .routes.vision_routes import router as vision_router
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title="AURA // AI Study Companion API",
     description="Backend API for real-time eye-tracking, study sessions, and Gemini AI tutoring.",
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 # ---------------------------------------------------------------------------
@@ -42,7 +57,10 @@ async def spam_protection_middleware(request: Request, call_next):
     # Purge timestamps older than 60 seconds
     key = f"{client_ip}:{path.split('/')[2] if len(path.split('/')) > 2 else 'root'}"
     timestamps = [t for t in RATE_LIMIT_BUCKET[key] if now - t < 60.0]
-    RATE_LIMIT_BUCKET[key] = timestamps
+    if timestamps:
+        RATE_LIMIT_BUCKET[key] = timestamps
+    elif key in RATE_LIMIT_BUCKET:
+        del RATE_LIMIT_BUCKET[key]
 
     if len(timestamps) >= limit:
         return JSONResponse(
@@ -99,9 +117,7 @@ app.include_router(materials_router)
 app.include_router(vision_router)
 
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
+
 
 
 @app.get("/api/health")
@@ -118,6 +134,13 @@ def health_check():
 frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon_icon():
+        fav_svg = frontend_dist / "favicon.svg"
+        if fav_svg.is_file():
+            return FileResponse(str(fav_svg), media_type="image/svg+xml")
+        return Response(status_code=204)
 
     @app.get("/{full_path:path}")
     def serve_frontend(full_path: str):

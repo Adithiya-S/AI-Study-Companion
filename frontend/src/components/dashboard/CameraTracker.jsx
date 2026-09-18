@@ -1,22 +1,20 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
-import { Camera as CameraIcon, CameraOff, Eye, Smartphone, AlertTriangle, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Camera as CameraIcon, CameraOff, Eye } from "lucide-react";
 import { GlowBadge } from "../ui/GlowBadge";
 import { sounds } from "../../lib/audio";
+import { apiUrl } from "../../lib/api";
 
 export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity = "medium" }) => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const faceMeshRef = useRef(null);
-  const objectDetectorRef = useRef(null);
   const animationFrameRef = useRef(null);
   const distractionCountRef = useRef(0);
   const lastDistractionTimeRef = useRef(0);
-  const lastPhoneCheckTimeRef = useRef(0);
   const detectedPhoneBoxRef = useRef(null);
 
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
-  const [modelReady, setModelReady] = useState(false);
   const [phoneModelReady, setPhoneModelReady] = useState(false);
   const [showMesh, setShowMesh] = useState(true);
 
@@ -498,7 +496,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
               offscreenCtx.drawImage(videoRef.current, 0, 0, 320, 180);
               const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.6);
 
-              const res = await fetch("http://127.0.0.1:8000/api/telemetry/detect-phone", {
+              const res = await fetch(apiUrl("/api/telemetry/detect-phone"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ image_base64: dataUrl }),

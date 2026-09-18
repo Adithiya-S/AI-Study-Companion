@@ -4,6 +4,7 @@ import { Eye, Shield, Lock, Mail, ArrowRight, ArrowLeft, CheckCircle2, Terminal,
 import { BorderBeam } from "../ui/BorderBeam";
 import { MagneticButton } from "../ui/MagneticButton";
 import { GlowBadge } from "../ui/GlowBadge";
+import { apiUrl } from "../../lib/api";
 
 const GOOGLE_CLIENT_ID = "262576481074-0qemddi96lt1d3buupbreoump4oj4f2e.apps.googleusercontent.com";
 
@@ -65,7 +66,7 @@ export const LoginPage = ({ onLoginSuccess, onBackToLanding, onOpenTerms, onOpen
     setErrorMessage("");
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/auth/google", {
+      const res = await fetch(apiUrl("/api/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: response.credential }),
@@ -112,7 +113,7 @@ export const LoginPage = ({ onLoginSuccess, onBackToLanding, onOpenTerms, onOpen
     setIsLoading(true);
 
     try {
-      const endpoint = isSignUp ? "http://127.0.0.1:8000/api/auth/register" : "http://127.0.0.1:8000/api/auth/login";
+      const endpoint = isSignUp ? apiUrl("/api/auth/register") : apiUrl("/api/auth/login");
       const payload = isSignUp ? { name, email, password } : { email, password };
 
       const res = await fetch(endpoint, {

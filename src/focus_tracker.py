@@ -22,28 +22,38 @@ class FocusTracker:
     """Advanced focus tracking using MediaPipe face mesh and eye detection."""
     
     def __init__(self):
-        # MediaPipe setup
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
-        
-        # Face mesh model
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
-            max_num_faces=1,
-            refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-        
-        # Hand detection setup (for detecting phone usage)
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
-        self.hand_detection_enabled = True
+        # MediaPipe setup (optional fallback; web app handles face mesh client-side)
+        self.mp_face_mesh = None
+        self.mp_drawing = None
+        self.mp_drawing_styles = None
+        self.face_mesh = None
+        self.mp_hands = None
+        self.hands = None
+        self.hand_detection_enabled = False
+
+        try:
+            if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
+                self.mp_face_mesh = mp.solutions.face_mesh
+                self.mp_drawing = getattr(mp.solutions, "drawing_utils", None)
+                self.mp_drawing_styles = getattr(mp.solutions, "drawing_styles", None)
+                self.face_mesh = self.mp_face_mesh.FaceMesh(
+                    max_num_faces=1,
+                    refine_landmarks=True,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5
+                )
+            if hasattr(mp, "solutions") and hasattr(mp.solutions, "hands"):
+                self.mp_hands = mp.solutions.hands
+                self.hands = self.mp_hands.Hands(
+                    static_image_mode=False,
+                    max_num_hands=2,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5
+                )
+                self.hand_detection_enabled = True
+        except Exception as e:
+            # Non-fatal: Web app runs MediaPipe face mesh client-side in the browser
+            print(f"Note: Backend MediaPipe face mesh not loaded ({e}). Browser client-side mesh will be used.")
         
         # YOLO phone detection setup
         self.phone_detection_enabled = False
@@ -514,6 +524,21 @@ class FocusTracker:
         if hand_boxes:
             all_detection_boxes.extend(hand_boxes)
             
+        if not self.face_mesh:
+            return {
+                "focus_score": 0.0, 
+                "is_focused": False, 
+                "ear": 0.0,
+                "gaze": "unknown",
+                "head_pose": {"pitch": 0.0, "yaw": 0.0, "roll": 0.0},
+                "phone_detected": phone_detected,
+                "phone_confidence": phone_confidence,
+                "phone_boxes": all_detection_boxes,
+                "hands_near_face": hands_near_face,
+                "hand_count": hand_count,
+                "details": "Client-side MediaPipe active"
+            }
+
         # Convert BGR to RGB
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(rgb_frame)
@@ -701,7 +726,7 @@ class FocusTracker:
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
         # Draw annotations
-        if focus_data["focus_score"] > 0 and self.show_outline:
+        if focus_data["focus_score"] > 0 and self.show_outline and self.face_mesh and self.mp_drawing:
             # Draw face mesh only if outline is enabled
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = self.face_mesh.process(rgb_frame)

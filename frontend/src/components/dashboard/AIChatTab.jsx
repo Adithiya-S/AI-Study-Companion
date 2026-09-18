@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Sparkles, Bot, User, Copy, Check, Terminal, Key, RefreshCw, ChevronDown, ChevronUp, ExternalLink, Plus, History, Globe, BookOpen, X, Trash2 } from "lucide-react";
 import { GlowBadge } from "../ui/GlowBadge";
+import { apiUrl } from "../../lib/api";
 
 const MarkdownContent = ({ content }) => {
   return (
@@ -127,7 +128,7 @@ export const AIChatTab = () => {
     localStorage.setItem("aura_gemini_key", apiKey.trim());
     setKeySaved(true);
     try {
-      await fetch("http://127.0.0.1:8000/api/ai/set-key", {
+      await fetch(apiUrl("/api/ai/set-key"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: apiKey.trim() }),
@@ -143,7 +144,7 @@ export const AIChatTab = () => {
 
   const handleNewChat = async () => {
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/ai/new-chat", { method: "POST" });
+      const res = await fetch(apiUrl("/api/ai/new-chat"), { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setSessionId(data.session_id);
@@ -165,7 +166,7 @@ export const AIChatTab = () => {
     setShowHistoryModal(true);
     setLoadingSessions(true);
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/ai/sessions");
+      const res = await fetch(apiUrl("/api/ai/sessions"));
       if (res.ok) {
         const data = await res.json();
         setPastSessions(data || []);
@@ -193,7 +194,7 @@ export const AIChatTab = () => {
   const handleDeleteSession = async (sessId, e) => {
     e.stopPropagation();
     try {
-      await fetch(`http://127.0.0.1:8000/api/ai/sessions/${sessId}`, { method: "DELETE" });
+      await fetch(apiUrl(`/api/ai/sessions/${sessId}`), { method: "DELETE" });
       setPastSessions((prev) => prev.filter((s) => s.id !== sessId));
       if (sessionId === sessId) {
         handleNewChat();
@@ -219,7 +220,7 @@ export const AIChatTab = () => {
     setIsTyping(true);
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/ai/chat", {
+      const res = await fetch(apiUrl("/api/ai/chat"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

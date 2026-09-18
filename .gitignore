@@ -154,8 +154,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -284,9 +284,14 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-# Application specific
+# Application runtime data & chat logs
 data/sessions/
-data/preferences/config.json
+data/preferences/
+data/materials/chat_history.json
+data/materials/chat_sessions.json
+data/materials/uploaded_files/
+data/materials/*.json
+data/materials/*.meta.json
 *.wav
 *.mp3
 .drift/
@@ -301,3 +306,10 @@ data/preferences/config.json
 # Frontend build & dependencies
 frontend/node_modules/
 frontend/dist/
+!frontend/src/lib/
+!frontend/src/lib/**
+
+# Neural network weights
+*.pt
+*.onnx
+

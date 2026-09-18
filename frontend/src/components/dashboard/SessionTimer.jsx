@@ -3,6 +3,7 @@ import { Play, Pause, RotateCcw, Flame, CheckCircle, BellRing, Coffee, Award, X,
 import { MagneticButton } from "../ui/MagneticButton";
 import { GlowBadge } from "../ui/GlowBadge";
 import { sounds } from "../../lib/audio";
+import { apiUrl } from "../../lib/api";
 import confetti from "canvas-confetti";
 
 export const SessionTimer = ({
@@ -24,7 +25,7 @@ export const SessionTimer = ({
   const startSessionBackend = async () => {
     if (!user?.id) return;
     try {
-      const res = await fetch("http://127.0.0.1:8000/api/sessions/start", {
+      const res = await fetch(apiUrl("/api/sessions/start"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -46,7 +47,7 @@ export const SessionTimer = ({
     if (!sessionIdRef.current) return;
     const elapsedMinutes = Math.max(1, Math.round((totalTime - timeLeft) / 60));
     try {
-      await fetch("http://127.0.0.1:8000/api/sessions/end", {
+      await fetch(apiUrl("/api/sessions/end"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -67,7 +68,7 @@ export const SessionTimer = ({
   // Log live distractions to session if active
   useEffect(() => {
     if (isActive && distractions > prevDistractionsRef.current && sessionIdRef.current) {
-      fetch("http://127.0.0.1:8000/api/sessions/log-distraction", {
+      fetch(apiUrl("/api/sessions/log-distraction"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
