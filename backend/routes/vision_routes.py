@@ -34,9 +34,10 @@ def get_vision_status():
     tracker = get_tracker()
     return {
         "yolo_available": tracker.phone_detection_enabled,
-        "yolo_model": "yolov8n.pt" if tracker.phone_detection_enabled else None,
-        "phone_class_id": tracker.PHONE_CLASS_ID,
-        "confidence_threshold": tracker.PHONE_CONFIDENCE_THRESHOLD,
+        "engine": getattr(tracker, "engine", "unknown"),
+        "yolo_model": "yolov8n.onnx" if getattr(tracker, "engine", "") == "onnx" else "yolov8n.pt",
+        "phone_class_id": getattr(tracker, "PHONE_CLASS_ID", 67),
+        "confidence_threshold": getattr(tracker, "PHONE_CONFIDENCE_THRESHOLD", 0.20),
     }
 
 

@@ -33,9 +33,9 @@ COPY backend/ /app/backend/
 COPY src/ /app/src/
 COPY main.py /app/main.py
 
-# Create runtime directories & pre-cache YOLOv8 nano weights inside image
+# Create runtime directories & pre-cache YOLOv8 nano ONNX weights inside image
 RUN mkdir -p /app/data /app/data/materials && \
-    python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
+    python -c "from ultralytics import YOLO; YOLO('yolov8n.pt').export(format='onnx', imgsz=320)"
 
 # Expose container port
 EXPOSE 8000

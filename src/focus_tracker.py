@@ -25,18 +25,31 @@ try:
 except Exception:
     pass
 
-# Try to import YOLO for phone detection
+# Try to import ONNX Runtime for ultra-lightweight (<80MB RAM) inference
+try:
+    import onnxruntime as ort
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+
+# Try to import YOLO for fallback
 try:
     from ultralytics import YOLO
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
-    print("Warning: ultralytics not installed. Phone detection will be disabled.")
+    print("Warning: ultralytics not installed.")
 
 class FocusTracker:
     """Advanced focus tracking using MediaPipe face mesh and eye detection."""
     
     def __init__(self, load_mediapipe: bool = False):
+        # Phone detection parameters (always initialized)
+        self.PHONE_CLASS_ID = 67  # COCO dataset class ID for cell phone
+        self.PHONE_CONFIDENCE_THRESHOLD = 0.20  # Calibrated sensitivity
+        self.PHONE_PENALTY = 0.3  # Reduce focus score by 30% when phone detected
+        self.HAND_NEAR_FACE_PENALTY = 0.15  # Additional penalty if hands detected near face area
+
         # MediaPipe setup (lazy-loaded: web app runs MediaPipe face mesh client-side in browser)
         self.mp_face_mesh = None
         self.mp_drawing = None
@@ -49,15 +62,40 @@ class FocusTracker:
         if load_mediapipe:
             self._init_mediapipe()
         
-        # YOLO phone detection setup
+        # Phone detection setup (Priority 1: ONNX Runtime <80MB RAM, Priority 2: PyTorch YOLO)
         self.phone_detection_enabled = False
+        self.engine = None
+        self.ort_session = None
         self.yolo_model = None
-        if YOLO_AVAILABLE:
+
+        # Look for ONNX model in project root or current directory
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        onnx_candidates = [
+            os.path.join(base_dir, "yolov8n.onnx"),
+            "yolov8n.onnx",
+            "/app/yolov8n.onnx",
+        ]
+        onnx_path = next((p for p in onnx_candidates if os.path.isfile(p)), None)
+
+        if ONNX_AVAILABLE and onnx_path:
             try:
-                # Load YOLOv8 nano model (lightweight and fast)
-                self.yolo_model = YOLO('yolov8n.pt')
+                opts = ort.SessionOptions()
+                opts.intra_op_num_threads = 1
+                opts.inter_op_num_threads = 1
+                self.ort_session = ort.InferenceSession(onnx_path, sess_options=opts, providers=["CPUExecutionProvider"])
+                self.ort_input_name = self.ort_session.get_inputs()[0].name
+                self.engine = "onnx"
                 self.phone_detection_enabled = True
-                print("Phone detection enabled (YOLOv8)")
+                print(f"Phone detection enabled (ONNX Runtime: {onnx_path})")
+            except Exception as e:
+                print(f"Warning: Could not load ONNX model ({e}), falling back to YOLOv8 PyTorch.")
+
+        if not self.phone_detection_enabled and YOLO_AVAILABLE:
+            try:
+                self.yolo_model = YOLO('yolov8n.pt')
+                self.engine = "yolo"
+                self.phone_detection_enabled = True
+                print("Phone detection enabled (YOLOv8 PyTorch)")
             except Exception as e:
                 print(f"Warning: Could not load YOLO model: {e}")
                 self.phone_detection_enabled = False
@@ -88,15 +126,6 @@ class FocusTracker:
                 self.hand_detection_enabled = True
         except Exception as e:
             print(f"Note: Backend MediaPipe not loaded ({e}).")
-        
-        # Phone detection parameters
-        self.PHONE_CLASS_ID = 67  # COCO dataset class ID for cell phone
-        self.PHONE_CONFIDENCE_THRESHOLD = 0.25  # Lowered threshold for partial visibility
-        self.PHONE_PENALTY = 0.3  # Reduce focus score by 30% when phone detected
-        
-        # Hand detection to infer phone usage (people often hold phones near face)
-        # Detecting hands in specific positions can indicate phone usage
-        self.HAND_NEAR_FACE_PENALTY = 0.15  # Additional penalty if hands detected near face area
         
         # Camera
         self.camera = None
@@ -369,45 +398,107 @@ class FocusTracker:
     
     def detect_phone(self, frame) -> Tuple[bool, float, Optional[List]]:
         """
-        Detect if a phone is present in the frame using YOLO.
-        Also detects hands near the face area which may indicate phone usage.
-        
+        Detect if a phone is present in the frame using ONNX Runtime (low memory) or YOLOv8 PyTorch.
         Returns:
             Tuple of (phone_detected, confidence, bounding_boxes)
             - phone_detected: True if phone is detected with sufficient confidence
             - confidence: Highest confidence score for phone detection
             - bounding_boxes: List of bounding boxes for detected phones [(x1, y1, x2, y2, conf, type), ...]
         """
-        if not self.phone_detection_enabled or self.yolo_model is None:
+        if not self.phone_detection_enabled:
             return False, 0.0, None
-        
+
+        if self.engine == "onnx" and self.ort_session is not None:
+            return self._detect_phone_onnx(frame)
+        elif self.engine == "yolo" and self.yolo_model is not None:
+            return self._detect_phone_yolo(frame)
+        return False, 0.0, None
+
+    def _detect_phone_onnx(self, frame) -> Tuple[bool, float, Optional[List]]:
         try:
-            # Run YOLO inference on the input frame
+            h0, w0 = frame.shape[:2]
+            img = cv2.resize(frame, (320, 320))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            img = img.astype(np.float32) / 255.0
+            blob = np.transpose(img, (2, 0, 1))[np.newaxis, ...]
+
+            out = self.ort_session.run(None, {self.ort_input_name: blob})[0]
+            preds = np.transpose(out[0])  # Shape: (2100, 84)
+
+            scale_x = w0 / 320.0
+            scale_y = h0 / 320.0
+
+            boxes = []
+            confidences = []
+            labels = []
+
+            phone_scores = preds[:, 4 + self.PHONE_CLASS_ID]
+            remote_scores = preds[:, 4 + 65]
+
+            for i in range(len(preds)):
+                p_conf = float(phone_scores[i])
+                r_conf = float(remote_scores[i])
+
+                if p_conf >= self.PHONE_CONFIDENCE_THRESHOLD:
+                    cx, cy, w, h = preds[i, :4]
+                    x1 = int((cx - w / 2.0) * scale_x)
+                    y1 = int((cy - h / 2.0) * scale_y)
+                    bw = int(w * scale_x)
+                    bh = int(h * scale_y)
+                    boxes.append([x1, y1, bw, bh])
+                    confidences.append(p_conf)
+                    labels.append("phone")
+                elif r_conf >= 0.35:
+                    cx, cy, w, h = preds[i, :4]
+                    x1 = int((cx - w / 2.0) * scale_x)
+                    y1 = int((cy - h / 2.0) * scale_y)
+                    bw = int(w * scale_x)
+                    bh = int(h * scale_y)
+                    boxes.append([x1, y1, bw, bh])
+                    confidences.append(r_conf)
+                    labels.append("phone_remote")
+
+            if not boxes:
+                return False, 0.0, None
+
+            indices = cv2.dnn.NMSBoxes(boxes, confidences, self.PHONE_CONFIDENCE_THRESHOLD, 0.45)
+            detection_boxes = []
+            max_conf = 0.0
+
+            if len(indices) > 0:
+                for idx in np.array(indices).flatten():
+                    bx, by, bw, bh = boxes[idx]
+                    conf = confidences[idx]
+                    max_conf = max(max_conf, conf)
+                    detection_boxes.append((bx, by, bx + bw, by + bh, conf, labels[idx]))
+
+            phone_detected = len(detection_boxes) > 0
+            return (phone_detected, max_conf, detection_boxes if detection_boxes else None)
+
+        except Exception as e:
+            print(f"ONNX phone detection error: {e}")
+            return False, 0.0, None
+
+    def _detect_phone_yolo(self, frame) -> Tuple[bool, float, Optional[List]]:
+        try:
             results = self.yolo_model(frame, verbose=False, conf=0.15)
-            
             phone_detected = False
             max_confidence = 0.0
             detection_boxes = []
-            
-            frame_height, frame_width = frame.shape[:2]
-            face_area_top = int(frame_height * 0.1)  # Top 10% to 60% is typical face area
-            face_area_bottom = int(frame_height * 0.65)
-            
-            # Process detections
+
             for result in results:
                 boxes = result.boxes
                 if boxes is None:
                     continue
-                
+
                 for box in boxes:
                     class_id = int(box.cls[0])
                     confidence = float(box.conf[0])
-                    
-                    # Detect cell phones (COCO class 67) or handheld remotes (COCO class 65)
+
                     is_cell_phone = class_id == self.PHONE_CLASS_ID
                     is_remote = class_id == 65
-                    
-                    if is_cell_phone and confidence >= 0.18:
+
+                    if is_cell_phone and confidence >= self.PHONE_CONFIDENCE_THRESHOLD:
                         phone_detected = True
                         max_confidence = max(max_confidence, confidence)
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
@@ -417,11 +508,11 @@ class FocusTracker:
                         max_confidence = max(max_confidence, confidence)
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                         detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone_remote'))
-            
+
             return (phone_detected, max_confidence, detection_boxes if detection_boxes else None)
-            
+
         except Exception as e:
-            print(f"Phone detection error: {e}")
+            print(f"YOLO phone detection error: {e}")
             return False, 0.0, None
     
     def detect_hands_near_face(self, frame, face_landmarks=None) -> Tuple[bool, int, Optional[List]]:

@@ -544,13 +544,16 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           isDetectingPhoneRef.current = true;
           try {
             offscreenCtx.drawImage(videoRef.current, 0, 0, offscreenW, offscreenH);
-            const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.72);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
 
             const res = await fetch(apiUrl("/api/telemetry/detect-phone"), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ image_base64: dataUrl }),
+              signal: controller.signal,
             });
+            clearTimeout(timeoutId);
 
             if (res.ok) {
               const data = await res.json();
@@ -579,10 +582,10 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
                 detectedPhoneBoxRef.current = null;
               }
             } else {
-              console.debug("Phone scan HTTP status:", res.status);
+              console.warn("Phone scan HTTP status:", res.status);
             }
           } catch (err) {
-            console.debug("Phone scan network error:", err);
+            console.warn("Phone scan request warning:", err.name === "AbortError" ? "Timeout (3.5s)" : err.message);
           } finally {
             isDetectingPhoneRef.current = false;
           }
