@@ -523,10 +523,12 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           document.addEventListener("visibilitychange", handleVisibilityChange);
         }
 
-        // 6. Backend YOLO Phone Detector (Captures a small frame every 900ms)
+        // 6. Backend YOLO Phone Detector (Captures a frame every 1000ms)
         const offscreenCanvas = document.createElement("canvas");
-        offscreenCanvas.width = 320;
-        offscreenCanvas.height = 180;
+        const offscreenW = 480;
+        const offscreenH = 270;
+        offscreenCanvas.width = offscreenW;
+        offscreenCanvas.height = offscreenH;
         const offscreenCtx = offscreenCanvas.getContext("2d");
 
         phoneScanInterval = setInterval(async () => {
@@ -541,8 +543,8 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
 
           isDetectingPhoneRef.current = true;
           try {
-            offscreenCtx.drawImage(videoRef.current, 0, 0, 320, 180);
-            const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.6);
+            offscreenCtx.drawImage(videoRef.current, 0, 0, offscreenW, offscreenH);
+            const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.72);
 
             const res = await fetch(apiUrl("/api/telemetry/detect-phone"), {
               method: "POST",
@@ -554,20 +556,29 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
               const data = await res.json();
               if (data.phone_detected && data.boxes && data.boxes.length > 0) {
                 const b = data.boxes[0];
+                const scaleX = 640 / offscreenW;
+                const scaleY = 360 / offscreenH;
                 detectedPhoneBoxRef.current = {
-                  bbox: [b.x1 * 2, b.y1 * 2, (b.x2 - b.x1) * 2, (b.y2 - b.y1) * 2],
+                  bbox: [
+                    b.x1 * scaleX,
+                    b.y1 * scaleY,
+                    (b.x2 - b.x1) * scaleX,
+                    (b.y2 - b.y1) * scaleY,
+                  ],
                   score: data.confidence,
                 };
               } else {
                 detectedPhoneBoxRef.current = null;
               }
+            } else {
+              console.debug("Phone scan HTTP status:", res.status);
             }
           } catch (err) {
-            // Ignore background scan error if backend busy
+            console.debug("Phone scan network error:", err);
           } finally {
             isDetectingPhoneRef.current = false;
           }
-        }, 900);
+        }, 1000);
       } catch (err) {
         console.warn("Webcam or model setup error:", err);
         if (isMounted) {

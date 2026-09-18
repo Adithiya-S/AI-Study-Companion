@@ -353,25 +353,16 @@ class FocusTracker:
         
         Returns:
             Tuple of (phone_detected, confidence, bounding_boxes)
-            - phone_detected: True if phone is detected with sufficient confidence OR hands near face
+            - phone_detected: True if phone is detected with sufficient confidence
             - confidence: Highest confidence score for phone detection
-            - bounding_boxes: List of bounding boxes for detected phones and hands [(x1, y1, x2, y2, conf, type), ...]
+            - bounding_boxes: List of bounding boxes for detected phones [(x1, y1, x2, y2, conf, type), ...]
         """
-        # Throttle heavy YOLO inference to reduce per-frame cost
-        if not hasattr(self, "_last_phone_check_time"):
-            self._last_phone_check_time = 0.0
-            self._last_phone_result = (False, 0.0, None)
-            self._phone_check_interval = 0.6  # seconds
-
         if not self.phone_detection_enabled or self.yolo_model is None:
             return False, 0.0, None
         
         try:
-            now = time.time()
-            if now - self._last_phone_check_time < self._phone_check_interval:
-                return self._last_phone_result
-            # Run YOLO inference
-            results = self.yolo_model(frame, verbose=False)
+            # Run YOLO inference on the input frame
+            results = self.yolo_model(frame, verbose=False, conf=0.15)
             
             phone_detected = False
             max_confidence = 0.0
@@ -379,18 +370,23 @@ class FocusTracker:
             
             frame_height, frame_width = frame.shape[:2]
             face_area_top = int(frame_height * 0.1)  # Top 10% to 60% is typical face area
-            face_area_bottom = int(frame_height * 0.6)
+            face_area_bottom = int(frame_height * 0.65)
             
             # Process detections
             for result in results:
                 boxes = result.boxes
+                if boxes is None:
+                    continue
                 
                 for box in boxes:
                     class_id = int(box.cls[0])
                     confidence = float(box.conf[0])
                     
-                    # Detect cell phones (class 67)
-                    if class_id == self.PHONE_CLASS_ID and confidence >= self.PHONE_CONFIDENCE_THRESHOLD:
+                    # Detect cell phones (COCO class 67) or remote controls (COCO class 65)
+                    is_cell_phone = class_id == self.PHONE_CLASS_ID
+                    is_remote = class_id == 65
+                    
+                    if (is_cell_phone and confidence >= self.PHONE_CONFIDENCE_THRESHOLD) or (is_remote and confidence >= 0.40):
                         phone_detected = True
                         max_confidence = max(max_confidence, confidence)
                         
@@ -398,41 +394,20 @@ class FocusTracker:
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                         detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone'))
                     
-                    # Detect hands near face (class 0 is person, but we'll look for specific hand gestures)
-                    # Note: COCO doesn't have a dedicated "hand" class, but we can use heuristics
-                    # If we detect objects in the upper portion of frame with medium confidence,
-                    # it might indicate phone usage
-                    
-            # Additional heuristic: Check for small objects in face area that might be partially visible phones
-            # This helps catch phones that are partially obscured
-            for result in results:
-                boxes = result.boxes
-                for box in boxes:
-                    class_id = int(box.cls[0])
-                    confidence = float(box.conf[0])
-                    
-                    # Look for objects in the face/upper body area with lower confidence
-                    # These could be partially visible phones
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                    box_center_y = (y1 + y2) / 2
-                    
-                    # Check if object is in face area
-                    if face_area_top < box_center_y < face_area_bottom:
-                        # Check for cell phone with even lower confidence (partially visible)
-                        if class_id == self.PHONE_CLASS_ID and confidence >= 0.15:
-                            if not phone_detected:  # Only add if not already detected with higher confidence
-                                phone_detected = True
-                                max_confidence = max(max_confidence, confidence)
-                                detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone_partial'))
+                    # Secondary heuristic: partially visible phone in face/upper-body area
+                    elif is_cell_phone and confidence >= 0.15:
+                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                        box_center_y = (y1 + y2) / 2
+                        if face_area_top < box_center_y < face_area_bottom:
+                            phone_detected = True
+                            max_confidence = max(max_confidence, confidence)
+                            detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone_partial'))
             
-            result = (phone_detected, max_confidence, detection_boxes if detection_boxes else None)
-            self._last_phone_check_time = now
-            self._last_phone_result = result
-            return result
+            return (phone_detected, max_confidence, detection_boxes if detection_boxes else None)
             
         except Exception as e:
             print(f"Phone detection error: {e}")
-        return False, 0.0, None
+            return False, 0.0, None
     
     def detect_hands_near_face(self, frame, face_landmarks=None) -> Tuple[bool, int, Optional[List]]:
         """

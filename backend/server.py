@@ -25,6 +25,17 @@ from .routes.vision_routes import router as vision_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Pre-warm YOLOv8 model in background so first request is instant
+    try:
+        from .routes.vision_routes import get_tracker
+        tracker = get_tracker()
+        if tracker.phone_detection_enabled and tracker.yolo_model:
+            import numpy as np
+            dummy = np.zeros((180, 320, 3), dtype=np.uint8)
+            tracker.detect_phone(dummy)
+            print("YOLOv8 phone detection model warmed up and ready.")
+    except Exception as e:
+        print(f"YOLOv8 warm-up note: {e}")
     yield
 
 
@@ -40,19 +51,32 @@ app = FastAPI(
 # In-memory sliding window rate-limiter per client IP
 # ---------------------------------------------------------------------------
 RATE_LIMIT_BUCKET = defaultdict(list)
-MAX_REQUESTS_PER_MINUTE = 60
-SENSITIVE_MAX_PER_MINUTE = 20  # For /api/ai/ and /api/auth/register
+MAX_REQUESTS_PER_MINUTE = 120
+SENSITIVE_MAX_PER_MINUTE = 25   # For /api/ai/ and /api/auth/register
+TELEMETRY_MAX_PER_MINUTE = 240  # For real-time camera telemetry (4 req/sec)
 
 
 @app.middleware("http")
 async def spam_protection_middleware(request: Request, call_next):
+    # Always allow CORS preflight requests without rate-limiting
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     client_ip = request.client.host if request.client else "127.0.0.1"
     path = request.url.path
     now = time.time()
 
-    # Apply stricter rate limits to AI and registration endpoints to stop spam & quota draining
-    is_sensitive = path.startswith("/api/ai") or path.startswith("/api/auth/register")
-    limit = SENSITIVE_MAX_PER_MINUTE if is_sensitive else MAX_REQUESTS_PER_MINUTE
+    # Health checks are never rate-limited
+    if path == "/api/health" or path == "/health":
+        return await call_next(request)
+
+    # Tiered rate limits
+    if path.startswith("/api/ai") or path.startswith("/api/auth/register"):
+        limit = SENSITIVE_MAX_PER_MINUTE
+    elif path.startswith("/api/telemetry"):
+        limit = TELEMETRY_MAX_PER_MINUTE
+    else:
+        limit = MAX_REQUESTS_PER_MINUTE
 
     # Purge timestamps older than 60 seconds
     key = f"{client_ip}:{path.split('/')[2] if len(path.split('/')) > 2 else 'root'}"
@@ -63,14 +87,21 @@ async def spam_protection_middleware(request: Request, call_next):
         del RATE_LIMIT_BUCKET[key]
 
     if len(timestamps) >= limit:
+        origin = request.headers.get("origin", "*")
         return JSONResponse(
             status_code=429,
             content={
                 "error": "RATE_LIMIT_EXCEEDED",
-                "message": "Too many requests. High-frequency telemetry/AI spam protection active. Please wait 60s.",
-                "retry_after": 60,
+                "message": "Too many requests. Telemetry or AI request threshold reached. Please wait a moment.",
+                "retry_after": 5,
             },
-            headers={"Retry-After": "60"},
+            headers={
+                "Retry-After": "5",
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Headers": "*",
+            },
         )
 
     RATE_LIMIT_BUCKET[key].append(now)
