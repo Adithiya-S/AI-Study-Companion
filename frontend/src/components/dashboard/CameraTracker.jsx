@@ -15,7 +15,8 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
 
   const [cameraEnabled, setCameraEnabled] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
-  const [phoneModelReady, setPhoneModelReady] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+  const [_phoneModelReady, setPhoneModelReady] = useState(false);
   const [showMesh, setShowMesh] = useState(true);
 
   // Performance & Concurrency Refs
@@ -82,9 +83,11 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
       }
       setCameraActive(false);
       setCameraEnabled(false);
+      setCameraError(null);
       setTelemetry((prev) => ({ ...prev, status: "STANDBY" }));
     } else {
       // Turn camera on
+      setCameraError(null);
       setCameraEnabled(true);
     }
   };
@@ -372,59 +375,89 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
     let isMounted = true;
     let localStream = null;
     let phoneScanInterval = null;
+    let handleVisibilityChange = null;
 
-    const waitForScripts = () => {
-      return new Promise((resolve) => {
-        const check = setInterval(() => {
-          if (window.FaceMesh) {
-            clearInterval(check);
-            resolve(true);
-          }
-        }, 100);
-        setTimeout(() => {
-          clearInterval(check);
-          resolve(!!window.FaceMesh);
-        }, 10000);
-      });
-    };
+    setCameraError(null);
 
     const setup = async () => {
       try {
-        await waitForScripts();
-        if (!window.FaceMesh) {
-          console.warn("MediaPipe script not loaded.");
+        // 1. Verify mediaDevices availability (requires HTTPS or localhost)
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Webcam access requires a secure connection (HTTPS or localhost).");
+        }
+
+        // 2. Request User Webcam Stream with resilient fallback
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640 },
+              height: { ideal: 360 },
+              frameRate: { ideal: 30, max: 30 },
+              facingMode: "user",
+            },
+            audio: false,
+          });
+        } catch (constraintErr) {
+          // Fallback to basic video constraint if ideal resolution isn't supported
+          localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        }
+
+        if (!isMounted) {
+          if (localStream) localStream.getTracks().forEach((t) => t.stop());
           return;
         }
 
-        // 1. Initialize FaceMesh
-        const faceMesh = new window.FaceMesh({
-          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
-        });
-
-        faceMesh.setOptions({
-          maxNumFaces: 1,
-          refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        faceMesh.onResults(onResults);
-        faceMeshRef.current = faceMesh;
-        if (isMounted) setModelReady(true);
-        if (isMounted) setPhoneModelReady(true);
-
-        // 2. Request User Webcam
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 360, frameRate: { ideal: 30, max: 30 }, facingMode: "user" },
-        });
         localStreamRef.current = localStream;
 
         if (videoRef.current && isMounted) {
           videoRef.current.srcObject = localStream;
-          await videoRef.current.play();
-          setCameraActive(true);
+          try {
+            await videoRef.current.play();
+          } catch (playErr) {
+            console.warn("Video play warning:", playErr);
+          }
+          if (isMounted) setCameraActive(true);
+        }
 
-          // 3. 30 FPS Face Tracking Loop
+        // 3. Wait for MediaPipe scripts (if loaded via CDN)
+        const waitForScripts = () => {
+          return new Promise((resolve) => {
+            if (window.FaceMesh) return resolve(true);
+            const check = setInterval(() => {
+              if (window.FaceMesh) {
+                clearInterval(check);
+                resolve(true);
+              }
+            }, 100);
+            setTimeout(() => {
+              clearInterval(check);
+              resolve(!!window.FaceMesh);
+            }, 8000);
+          });
+        };
+
+        const hasFaceMesh = await waitForScripts();
+
+        if (hasFaceMesh && window.FaceMesh && isMounted) {
+          const faceMesh = new window.FaceMesh({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+          });
+
+          faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+          });
+
+          faceMesh.onResults(onResults);
+          faceMeshRef.current = faceMesh;
+          if (isMounted) setPhoneModelReady(true);
+
+          // 4. 30 FPS Face Tracking Loop
           let lastProcessTime = 0;
 
           const process = async (timestamp) => {
@@ -457,10 +490,8 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
 
           animationFrameRef.current = requestAnimationFrame(process);
 
-          // 4. Background Tab Visibility Handler
-          // When student switches browser tabs, browsers throttle requestAnimationFrame.
-          // We run a background setInterval so face tracking & phone detection persist continuously!
-          const handleVisibilityChange = () => {
+          // 5. Background Tab Visibility Handler
+          handleVisibilityChange = () => {
             if (document.hidden) {
               if (!backgroundIntervalRef.current && faceMeshRef.current) {
                 backgroundIntervalRef.current = setInterval(async () => {
@@ -490,55 +521,69 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           };
 
           document.addEventListener("visibilitychange", handleVisibilityChange);
-
-          // 5. Backend YOLO Phone Detector (Captures a small frame every 900ms)
-          const offscreenCanvas = document.createElement("canvas");
-          offscreenCanvas.width = 320;
-          offscreenCanvas.height = 180;
-          const offscreenCtx = offscreenCanvas.getContext("2d");
-
-          phoneScanInterval = setInterval(async () => {
-            if (
-              !isMounted ||
-              isDetectingPhoneRef.current ||
-              !videoRef.current ||
-              videoRef.current.readyState < 2
-            ) {
-              return;
-            }
-
-            isDetectingPhoneRef.current = true;
-            try {
-              offscreenCtx.drawImage(videoRef.current, 0, 0, 320, 180);
-              const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.6);
-
-              const res = await fetch(apiUrl("/api/telemetry/detect-phone"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ image_base64: dataUrl }),
-              });
-
-              if (res.ok) {
-                const data = await res.json();
-                if (data.phone_detected && data.boxes && data.boxes.length > 0) {
-                  const b = data.boxes[0];
-                  detectedPhoneBoxRef.current = {
-                    bbox: [b.x1 * 2, b.y1 * 2, (b.x2 - b.x1) * 2, (b.y2 - b.y1) * 2],
-                    score: data.confidence,
-                  };
-                } else {
-                  detectedPhoneBoxRef.current = null;
-                }
-              }
-            } catch (err) {
-              // Ignore background scan error if backend busy
-            } finally {
-              isDetectingPhoneRef.current = false;
-            }
-          }, 900);
         }
+
+        // 6. Backend YOLO Phone Detector (Captures a small frame every 900ms)
+        const offscreenCanvas = document.createElement("canvas");
+        offscreenCanvas.width = 320;
+        offscreenCanvas.height = 180;
+        const offscreenCtx = offscreenCanvas.getContext("2d");
+
+        phoneScanInterval = setInterval(async () => {
+          if (
+            !isMounted ||
+            isDetectingPhoneRef.current ||
+            !videoRef.current ||
+            videoRef.current.readyState < 2
+          ) {
+            return;
+          }
+
+          isDetectingPhoneRef.current = true;
+          try {
+            offscreenCtx.drawImage(videoRef.current, 0, 0, 320, 180);
+            const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.6);
+
+            const res = await fetch(apiUrl("/api/telemetry/detect-phone"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ image_base64: dataUrl }),
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (data.phone_detected && data.boxes && data.boxes.length > 0) {
+                const b = data.boxes[0];
+                detectedPhoneBoxRef.current = {
+                  bbox: [b.x1 * 2, b.y1 * 2, (b.x2 - b.x1) * 2, (b.y2 - b.y1) * 2],
+                  score: data.confidence,
+                };
+              } else {
+                detectedPhoneBoxRef.current = null;
+              }
+            }
+          } catch (err) {
+            // Ignore background scan error if backend busy
+          } finally {
+            isDetectingPhoneRef.current = false;
+          }
+        }, 900);
       } catch (err) {
         console.warn("Webcam or model setup error:", err);
+        if (isMounted) {
+          let errorMsg = "Unable to start webcam stream.";
+          if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+            errorMsg = "Webcam permission denied. Please allow camera access in your browser address bar.";
+          } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+            errorMsg = "No webcam device found. Please ensure your camera is connected.";
+          } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+            errorMsg = "Camera is currently in use by another app or browser tab.";
+          } else if (err.message) {
+            errorMsg = err.message;
+          }
+          setCameraError(errorMsg);
+          setCameraActive(false);
+        }
       }
     };
 
@@ -547,6 +592,9 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
     return () => {
       isMounted = false;
       if (phoneScanInterval) clearInterval(phoneScanInterval);
+      if (handleVisibilityChange) {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
       if (backgroundIntervalRef.current) {
         clearInterval(backgroundIntervalRef.current);
         backgroundIntervalRef.current = null;
@@ -561,6 +609,9 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
   const getStatusBadge = () => {
     if (!cameraEnabled) {
       return <GlowBadge status="idle">CAMERA OFF (STANDBY)</GlowBadge>;
+    }
+    if (cameraError) {
+      return <GlowBadge status="danger">CAMERA ERROR</GlowBadge>;
     }
     switch (telemetry.status) {
       case "FOCUSED":
@@ -622,6 +673,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
         {/* Real Live Webcam Video */}
         <video
           ref={videoRef}
+          autoPlay
           muted
           playsInline
           className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
@@ -635,7 +687,29 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           className="absolute inset-0 w-full h-full pointer-events-none z-10"
         />
 
-        {!cameraEnabled ? (
+        {cameraError ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-[#07090E]/95 z-20">
+            <div className="w-12 h-12 rounded-full bg-rose-950/40 border border-rose-500/30 flex items-center justify-center mb-3 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+              <CameraOff className="w-6 h-6" />
+            </div>
+            <div className="text-xs font-mono text-rose-400 font-bold mb-1">
+              CAMERA ACCESS ERROR
+            </div>
+            <p className="text-[11px] text-neutral-300 max-w-xs mb-4 leading-relaxed font-sans">
+              {cameraError}
+            </p>
+            <button
+              onClick={() => {
+                setCameraError(null);
+                setCameraEnabled(false);
+                setTimeout(() => setCameraEnabled(true), 50);
+              }}
+              className="px-4 py-2 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-mono font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              TRY AGAIN
+            </button>
+          </div>
+        ) : !cameraEnabled ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-[#07090E]/95 z-20">
             <div className="w-12 h-12 rounded-full bg-[#10141F] border border-neutral-800 flex items-center justify-center mb-3 text-neutral-400 shadow-[0_0_15px_rgba(0,0,0,0.5)]">
               <CameraOff className="w-6 h-6" />
