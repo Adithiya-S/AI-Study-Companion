@@ -301,7 +301,6 @@ data/materials/*.meta.json
 # Environment and secrets
 .env
 .env.*
-!.env.example
 
 # Frontend build & dependencies
 frontend/node_modules/

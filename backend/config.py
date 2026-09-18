@@ -35,9 +35,6 @@ if DATABASE_URL.startswith("postgresql://") and "sslmode=" not in DATABASE_URL a
 # Security & API
 JWT_SECRET = os.getenv("JWT_SECRET", "aura_deep_focus_secret_key_9981")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GOOGLE_CLIENT_ID = os.getenv(
-    "GOOGLE_CLIENT_ID",
-    "262576481074-0qemddi96lt1d3buupbreoump4oj4f2e.apps.googleusercontent.com",
-)
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 

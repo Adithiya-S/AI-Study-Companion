@@ -1,76 +1,93 @@
-# AURA — AI Deep Focus & Biometric Telemetry Companion
+# AURA // AI Deep Focus & Biometric Telemetry Study Companion
 
-A full-stack AI-powered study productivity platform with real-time browser-based eye tracking, biometric focus scoring, adaptive Pomodoro timers, Gemini AI tutoring, flashcards, and live session analytics.
+A high-precision study productivity workstation combining real-time in-browser eye tracking, native YOLOv8 smartphone distraction detection, an adaptive Pomodoro engine, multi-modal Google Gemini AI tutoring, active recall flashcards, and live biometric analytics.
 
-## 🏗️ Architecture
+---
+
+## 🏗️ Architecture & Cloud Infrastructure
+
+AURA is engineered for hybrid cloud and local-first execution:
+
+* **Frontend**: React 19 + Vite SPA with TailwindCSS, Framer Motion, and MediaPipe FaceMesh WASM. Hosted globally on **Vercel** with regional edge routing in **Mumbai (`bom1`)**.
+* **Backend**: FastAPI + Uvicorn with native YOLOv8 nano phone detection and document RAG pipelines. Hosted on **Render** (Singapore) or **Railway** via Docker.
+* **Database**: Managed PostgreSQL on **Supabase** (South Asia / Mumbai `ap-south-1`) via connection pooling (port 6543) with automatic fallback to local SQLite.
+* **AI Engine**: Google Gemini API (`google-genai` SDK v2+, supporting Gemini Flash models).
 
 ```
 AI-Study-Companion/
-├── backend/              # FastAPI + SQLAlchemy (SQLite)
-│   ├── server.py         # App entry, CORS, rate limiting
-│   ├── db.py             # SQLAlchemy models
-│   ├── auth.py           # JWT + bcrypt
-│   ├── config.py         # Env config
+├── backend/                       # FastAPI backend
+│   ├── server.py                  # API endpoints, CORS, sliding-window rate limiting
+│   ├── db.py                      # SQLAlchemy models (User, StudySession, Flashcard, etc.)
+│   ├── auth.py                    # Bcrypt hashing & JWT token creation
+│   ├── config.py                  # Environment config & database URL normalization
 │   └── routes/
-│       ├── auth_routes.py       # Register, login, Google OAuth, stats
-│       ├── session_routes.py    # Start/end sessions, analytics
-│       ├── materials_routes.py  # File upload, flashcards, RAG
-│       ├── ai_routes.py         # Gemini AI chat
-│       └── vision_routes.py     # Eye tracking vision helpers
-├── frontend/             # React 19 + Vite + TailwindCSS
+│       ├── auth_routes.py         # Registration, login, Google OAuth, user stats
+│       ├── session_routes.py      # Session lifecycle & distraction logging
+│       ├── materials_routes.py    # Multi-format document upload, flashcards, links
+│       ├── ai_routes.py           # Gemini chat, session history, offline copilot
+│       └── vision_routes.py       # Telemetry status & YOLOv8 phone detection
+├── frontend/                      # React 19 + Vite client application
+│   ├── index.html                 # Branded dark HUD entry
+│   ├── vercel.json                # Vercel SPA client rewrite & Mumbai region (bom1)
+│   ├── public/
+│   │   └── favicon.svg            # Vector cyan biometric crosshair icon
 │   └── src/
 │       ├── components/
-│       │   ├── dashboard/       # Full workspace UI
-│       │   ├── landing/         # Public landing page
-│       │   ├── auth/            # Login / register
-│       │   └── ui/              # Shared design components
-│       └── lib/                 # Audio, utilities
-├── data/                 # SQLite DB + uploaded study files
-├── main.py               # Convenience launcher
-└── requirements.txt      # Python dependencies
+│       │   ├── auth/              # Google GIS & email auth
+│       │   ├── dashboard/         # Biometric HUD, Timer, AI Studio, Analytics
+│       │   ├── landing/           # Obsidian dark engineering landing page
+│       │   └── ui/                # GlowBadge, TiltCard, BorderBeam
+│       └── lib/
+│           ├── api.js             # Dynamic backend URL resolver
+│           ├── audio.js           # Web Audio API alert synthesizers
+│           └── utils.js           # Class name utility helpers
+├── src/                           # Domain logic modules
+│   ├── ai_assistant.py            # Gemini RAG & document indexing
+│   ├── focus_tracker.py           # YOLOv8 object detection & OpenCV heuristics
+│   └── study_materials.py         # Document parsers (PDF, DOCX, PPTX, XLSX)
+├── Dockerfile                     # Multi-stage production container for Render/Railway
+├── render.yaml                    # Render 1-click blueprint specification
+├── main.py                        # Unified local launcher
+└── requirements.txt               # Backend dependencies (FastAPI, PyTorch, YOLOv8)
 ```
 
-## 🚀 Quick Start
+---
 
-### Prerequisites
-- **Python 3.11** (recommended) — 3.8–3.12 supported
-- **Node.js 18+**
-- **Google Gemini API key** — free at [aistudio.google.com](https://aistudio.google.com/app/apikey)
-- **Google OAuth Client ID** — free at [console.cloud.google.com](https://console.cloud.google.com)
+## 🚀 Quick Start (Local Development)
 
-### 1. Clone & Configure Environment
+### 1. Prerequisites
+* **Python 3.10 – 3.12**
+* **Node.js 18+**
+* **Google Gemini API Key** (Free tier at [Google AI Studio](https://aistudio.google.com/app/apikey))
+* **Google OAuth 2.0 Client ID** (Optional, from [Google Cloud Console](https://console.cloud.google.com))
 
-```bash
-git clone <repo-url>
-cd AI-Study-Companion
-
-# Copy and fill in your keys
-cp .env.example .env
-```
-
-Edit `.env`:
+### 2. Configure Environment (`.env`)
+Create a `.env` file in the project root:
 ```env
+# Database (defaults to local SQLite if blank)
 DATABASE_URL=sqlite:///data/study_companion.db
-JWT_SECRET=<generate with: python -c "import secrets; print(secrets.token_hex(32))">
+
+# JWT & Authentication
+JWT_SECRET=your_32_character_random_secret_here
+
+# Google Gemini AI Key
 GEMINI_API_KEY=your_gemini_api_key_here
-ENVIRONMENT=development
+
+# Google OAuth 2.0 (Optional)
+GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
 ```
 
-### 2. Install Python Dependencies
-
+### 3. Install Dependencies
 ```bash
+# Backend dependencies
 pip install -r requirements.txt
+
+# Frontend dependencies
+cd frontend && npm install && cd ..
 ```
 
-### 3. Install Frontend Dependencies
-
-```bash
-cd frontend
-npm install
-```
-
-### 4. Run (Development — Two Terminals)
-
+### 4. Run Development Servers
 **Terminal 1 — Backend (FastAPI + hot-reload):**
 ```bash
 python -m uvicorn backend.server:app --reload --port 8000
@@ -81,134 +98,75 @@ python -m uvicorn backend.server:app --reload --port 8000
 cd frontend && npm run dev
 ```
 
-Open **http://localhost:5173** in your browser.
+* Frontend: `http://localhost:5173`
+* Backend API & Docs: `http://localhost:8000/docs`
 
-### Run as Single Process (Production / Quick Launch)
+---
 
-Build the frontend first, then serve everything from FastAPI:
-```bash
-cd frontend && npm run build && cd ..
-python main.py
-```
+## ☁️ Cloud Deployment Guide
 
-Opens **http://127.0.0.1:8000** automatically in your browser.
+Deploy in order: **1. Supabase (DB)** ➔ **2. Render / Railway (Backend)** ➔ **3. Vercel (Frontend)**.
+
+### Step 1: Supabase (PostgreSQL Database)
+1. Create a project at [supabase.com](https://supabase.com) in region **South Asia (Mumbai) - `ap-south-1`**.
+2. Go to **Project Settings** ➔ **Database** ➔ **Connection String** ➔ **URI** (Mode: Transaction, Port: 6543).
+3. Copy the URI (remember to percent-encode any special characters in the password, e.g. `@` as `%40`).
+
+### Step 2: Render (Backend Web Service)
+1. In [render.com](https://render.com), click **New +** ➔ **Web Service** and link your GitHub repository.
+2. Select **Runtime: Docker** (or Python).
+3. Configure Environment Variables:
+   * `DATABASE_URL` = *(Your Supabase connection string)*
+   * `JWT_SECRET` = *(Random 32+ character string)*
+   * `GEMINI_API_KEY` = *(Your Google AI Studio API key)*
+   * `GOOGLE_CLIENT_ID` = *(Your Google Client ID)*
+4. Deploy and copy your live service URL (e.g. `https://aura-study-backend.onrender.com`).
+
+### Step 3: Vercel (Frontend SPA)
+1. In [vercel.com](https://vercel.com), import your repository.
+2. Set **Root Directory** to `frontend`.
+3. Framework Preset: `Vite` (auto-detected).
+4. Add Environment Variables:
+   * `VITE_API_URL` = *(Your Render backend URL, e.g. `https://aura-study-backend.onrender.com`)*
+   * `VITE_GOOGLE_CLIENT_ID` = *(Your Google Client ID)*
+5. Click **Deploy**.
 
 ---
 
 ## ✨ Features
 
-### 👁️ Real-Time Biometric Eye Tracking
-- MediaPipe Face Mesh in-browser (WASM) — no Python camera dependency
-- Eye Aspect Ratio (EAR) blink and closure detection
-- Gaze direction and iris tracking
-- Live focus score (0–100%) computed per frame
+### 👁️ Biometric Eye Tracking & Telemetry HUD
+* In-browser MediaPipe FaceMesh (WASM) monitors Eye Aspect Ratio (EAR) and head yaw/pitch.
+* Real-time gaze orientation classification (Focused, Looking Left, Looking Right, Eyes Closed/Drowsy).
+* Zero latency client-side execution with zero video transmission to servers for complete privacy.
 
-### ⏱️ Adaptive Study Timer
-- **Pomodoro** (25 min), **Deep Work** (50 min), **Break** (5 min) modes
-- Session start/end synced to backend DB automatically
-- Live distraction logging during active sessions
-- Confetti + audio on completion
+### 📱 Native YOLOv8 Phone Distraction Guard
+* Background neural network detects physical cell phones (`class 67`) in the camera frame.
+* Distinguishes between reading physical notebooks/textbooks vs. looking at smartphone screens.
 
-### 📊 Session Analytics
-- Per-user live dashboard: total hours, sessions, avg focus score, streak
-- Period filter: 1D / 7D / 14D / 30D
-- Bar chart: study time distribution by day or time-of-day
-- Line chart: focus score trend across sessions
-- Full session history table with CSV export
+### ⏱️ Sprint Workstation & Adaptive Audio
+* Structured Pomodoro (25/5 min) and Deep Work (50/10 min) sprint intervals.
+* Synthesized Web Audio API chimes for distraction warnings and sprint completions.
 
-### 🤖 Gemini AI Study Tutor
-- **Internet mode**: general knowledge questions via Gemini 2.0 Flash
-- **Materials mode**: RAG over your uploaded documents (PDF, DOCX, PPTX, XLSX, TXT)
-- Persistent chat history per tab session
-- Markdown rendering with syntax highlighting
+### 📚 Study Materials & Spaced Repetition Flashcards
+* Multi-format document parser supporting PDF, Word DOCX, PowerPoint PPTX, Excel XLSX, and text files.
+* Interactive 3D flip flashcards powered by the SuperMemo SM-2 spaced repetition algorithm.
+* AI auto-generation of flashcards directly from lecture slides.
 
-### 📚 Materials & Flashcards
-- Upload study documents → indexed for AI tutor context
-- Create, shuffle, flip, and master flashcards
-- AI auto-generate flashcards from your uploaded materials
-- Quick-link bookmarks for study resources
-
-### 🔐 Authentication
-- Email + password register/login (bcrypt + JWT)
-- Google OAuth one-click sign-in (Google Identity Services)
-- All data is user-scoped and isolated
+### 📊 Deep Analytics & Cognitive Protocols
+* Historical trend visualizations (1D, 7D, 14D, 30D) using Chart.js.
+* Cognitive protocols guide (Feynman Technique, Leitner Box Spaced Repetition, Active Recall).
 
 ---
 
-## ⚙️ Configuration
+## 🔒 Security & Privacy
 
-### Environment Variables (`.env`)
-
-| Variable | Description | Default |
-|---|---|---|
-| `DATABASE_URL` | SQLAlchemy connection string | `sqlite:///data/study_companion.db` |
-| `JWT_SECRET` | Secret for signing JWT tokens | *(required)* |
-| `GEMINI_API_KEY` | Google Gemini AI key | *(required)* |
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID | *(set in frontend config)* |
-| `ENVIRONMENT` | `development` or `production` | `development` |
-
-### Focus Sensitivity
-Configurable per-user from the **Configuration** tab in the workspace:
-- **High** — strict distraction detection (best for distraction-prone environments)
-- **Medium** — balanced (default)
-- **Low** — lenient (useful for reading or note-taking)
+* **Zero Camera Stream Storage**: Camera frames are processed strictly in-browser via WebAssembly and ephemeral memory.
+* **Rate Limiting & Anti-Spam**: In-memory sliding window rate limiting on sensitive telemetry and authentication endpoints.
+* **JWT Cryptography**: User sessions are signed with cryptographically secure HS256 JWT tokens.
 
 ---
 
-## 📦 Tech Stack
+## 📄 License
 
-### Backend
-| Package | Purpose |
-|---|---|
-| `fastapi` | REST API framework |
-| `uvicorn` | ASGI server |
-| `sqlalchemy` | ORM + SQLite |
-| `google-genai` | Gemini 2.0 Flash AI |
-| `google-auth` | Google OAuth token verification |
-| `python-multipart` | File upload handling |
-| `PyPDF2` / `python-docx` / `python-pptx` / `openpyxl` | Document parsing for RAG |
-| `opencv-python` / `mediapipe` / `numpy` | Vision helpers (backend-side) |
-
-### Frontend
-| Package | Purpose |
-|---|---|
-| `react 19` | UI framework |
-| `vite` | Build tool + HMR dev server |
-| `tailwindcss` | Utility CSS |
-| `framer-motion` | Animations |
-| `chart.js` + `react-chartjs-2` | Analytics charts |
-| `@mediapipe/face_mesh` | In-browser eye tracking (WASM) |
-| `react-markdown` + `remark-gfm` | AI response rendering |
-| `lucide-react` | Icon set |
-| `canvas-confetti` | Session completion celebration |
-
----
-
-## 🔍 Troubleshooting
-
-**Camera not working in browser:**
-- Grant camera permission when prompted
-- Ensure no other app is using the webcam
-- Use HTTPS or `localhost` — browser blocks camera on plain HTTP remote URLs
-
-**Backend won't start:**
-- Verify `.env` exists and `GEMINI_API_KEY` is set
-- Check Python version: `python --version` (3.11 recommended)
-- Run `pip install -r requirements.txt` to ensure all deps are installed
-
-**Frontend won't connect to API:**
-- Confirm backend is running on port `8000`
-- CORS is pre-configured for `localhost:5173` and `localhost:3000`
-
-**Analytics shows zeros after sessions:**
-- Sessions only record when started with the timer **Start Sprint** button
-- Data updates live — switch to the Session Recap tab to see results
-
----
-
-## 🙏 Acknowledgments
-
-- **Google MediaPipe** — In-browser face mesh & iris tracking
-- **Google Gemini** — Multimodal AI tutoring
-- **FastAPI** — High-performance Python web framework
-- **Framer Motion** — Production-quality React animations
+MIT License. Designed for high-cognition deep work.

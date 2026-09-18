@@ -6,7 +6,7 @@ import { MagneticButton } from "../ui/MagneticButton";
 import { GlowBadge } from "../ui/GlowBadge";
 import { apiUrl } from "../../lib/api";
 
-const GOOGLE_CLIENT_ID = "262576481074-0qemddi96lt1d3buupbreoump4oj4f2e.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 export const LoginPage = ({ onLoginSuccess, onBackToLanding, onOpenTerms, onOpenPrivacy }) => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -20,6 +20,7 @@ export const LoginPage = ({ onLoginSuccess, onBackToLanding, onOpenTerms, onOpen
 
   // Initialize Google Identity Services (GIS)
   useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
     const setupGoogleGSI = () => {
       if (window.google?.accounts?.id) {
         try {

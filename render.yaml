@@ -20,4 +20,4 @@ services:
       - key: FRONTEND_URL
         sync: false
       - key: GOOGLE_CLIENT_ID
-        value: "262576481074-0qemddi96lt1d3buupbreoump4oj4f2e.apps.googleusercontent.com"
+        sync: false
