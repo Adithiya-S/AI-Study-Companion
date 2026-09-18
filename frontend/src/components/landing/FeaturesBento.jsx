@@ -7,10 +7,10 @@ export const FeaturesBento = ({ onOpenDashboard }) => {
   const features = [
     {
       id: "01",
-      title: "SUB-SECOND BIOMETRIC TRACKING",
+      title: "SUB-SECOND EYE & GAZE TRACKING",
       subtitle: "Eye Aspect Ratio (EAR) & Gaze Vectors",
       description:
-        "MediaPipe face mesh calculates eye openness and head orientation 60 times per second. Looking away or phone usage triggers instant subtle haptic/audio recovery cues.",
+        "MediaPipe face mesh calculates eye openness and head orientation 30 times per second. Looking away or phone usage triggers instant subtle haptic/audio recovery cues.",
       icon: Eye,
       tag: "COMPUTER VISION",
       accent: "from-cyan-500/20 to-cyan-500/0",

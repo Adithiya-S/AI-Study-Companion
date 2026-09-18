@@ -64,12 +64,12 @@ export const DashboardLayout = ({ user, onSignOut }) => {
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#0F131C] border border-cyan-500/40 flex items-center justify-center shadow-[0_0_12px_rgba(0,242,254,0.2)]">
-              <Eye className="w-4 h-4 text-cyan-400" />
+            <div className="w-8 h-8 rounded-lg bg-[#0F131C] border border-cyan-500/40 flex items-center justify-center shadow-[0_0_12px_rgba(0,242,254,0.2)] p-1.5">
+              <img src="/favicon.svg" alt="AURA" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="font-mono text-sm font-bold tracking-wider text-white flex items-center gap-2">
-                AURA <span className="text-cyan-400">//</span> WORKSPACE
+                AURA <span className="text-cyan-400">//</span> AI STUDY COMPANION
               </div>
               <div className="text-[10px] font-mono text-neutral-500">STUDENT OPERATOR NODE</div>
             </div>
@@ -77,7 +77,7 @@ export const DashboardLayout = ({ user, onSignOut }) => {
 
           {/* Center quick status */}
           <div className="hidden md:flex items-center gap-4">
-            <GlowBadge status="active">BIOMETRIC ENGINE: ONLINE</GlowBadge>
+            <GlowBadge status="active">FOCUS ENGINE: ONLINE</GlowBadge>
             {activeTab !== "hub" && (
               <span className="text-xs font-mono text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-500/10 border border-cyan-500/30">
                 LIVE FOCUS: {liveFocusScore}%

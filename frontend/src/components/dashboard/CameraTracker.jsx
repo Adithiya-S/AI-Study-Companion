@@ -23,7 +23,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
   const lastReportedStatusRef = useRef("");
   const isDetectingPhoneRef = useRef(false);
   const isProcessingMeshRef = useRef(false);
-  const closedEyesCounterRef = useRef(0);
+  const eyesClosedStartTimeRef = useRef(0);
   const localStreamRef = useRef(null);
   const backgroundIntervalRef = useRef(null);
 
@@ -171,14 +171,18 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
 
     const avgEar = +((leftEar + rightEar) / 2.0).toFixed(2);
 
-    // Track consecutive eye closed frames:
-    // Open eyes are typically 0.26 - 0.38; closed eyes drop to 0.05 - 0.20
+    // Track eye closed duration:
+    // Blinking: < 0.22 for brief interval (< 2s) is normal and NOT a distraction.
+    // Prolonged closure / drowsy: counts as a distraction ONLY when closed for > 2.0 seconds (2000ms).
     if (avgEar < 0.22) {
-      closedEyesCounterRef.current += 1;
+      if (!eyesClosedStartTimeRef.current) {
+        eyesClosedStartTimeRef.current = now;
+      }
     } else {
-      closedEyesCounterRef.current = 0;
+      eyesClosedStartTimeRef.current = 0;
     }
-    const isEyesClosed = closedEyesCounterRef.current >= 2;
+    const eyeClosedDurationMs = eyesClosedStartTimeRef.current > 0 ? now - eyesClosedStartTimeRef.current : 0;
+    const isEyesClosed = eyeClosedDurationMs >= 2000;
 
     // 3. Head Yaw (Turning head left vs right)
     const nose = landmarks[1];
@@ -196,7 +200,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
       gazeDir = "LOOKING AT PHONE";
     } else if (isEyesClosed) {
       status = "EYES_CLOSED";
-      gazeDir = "CLOSED / DROWSY";
+      gazeDir = "EYES CLOSED (>2s)";
     } else if (yawRatio < yawLow) {
       status = "LOOKING_AWAY";
       gazeDir = "LEFT";
@@ -215,7 +219,19 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
       }
     }
 
-    const score = status === "FOCUSED" ? 98 : status === "PHONE_DETECTED" ? 65 : 75;
+    // Dynamic Focus Score Calculation:
+    // Under 7 distractions is evaluated as really good & highly focused (90-98%)
+    const currentDistractions = distractionCountRef.current;
+    const baseScore = currentDistractions < 7
+      ? Math.max(90, Math.round(98 - currentDistractions * 1.2))
+      : Math.max(45, Math.round(90 - (currentDistractions - 6) * 4));
+
+    const score = status === "FOCUSED"
+      ? baseScore
+      : status === "PHONE_DETECTED"
+      ? Math.max(40, baseScore - 20)
+      : Math.max(50, baseScore - 15);
+
     const shouldUpdate =
       status !== lastReportedStatusRef.current ||
       now - lastStateUpdateRef.current > 350;
@@ -550,7 +566,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
       case "FOCUSED":
         return <GlowBadge status="active">REAL EYE TRACKING: FOCUSED</GlowBadge>;
       case "PHONE_DETECTED":
-        return <GlowBadge status="warning">📱 LOOKING AT PHONE (YOLO)</GlowBadge>;
+        return <GlowBadge status="warning">📱 LOOKING AT PHONE</GlowBadge>;
       case "LOOKING_AWAY":
         return <GlowBadge status="warning">LOOKING AWAY</GlowBadge>;
       case "EYES_CLOSED":
@@ -569,7 +585,7 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
         <div className="flex items-center gap-2">
           <Eye className="w-4 h-4 text-cyan-400" />
           <span className="font-mono text-xs font-bold text-white tracking-wider">
-            MEDIAPIPE + NATIVE YOLO PHONE AI
+            MEDIAPIPE EYE TRACKING // 30 FPS
           </span>
         </div>
 
@@ -665,9 +681,9 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           <div className="text-emerald-400 font-bold mt-0.5">{telemetry.focusScore}%</div>
         </div>
         <div className="p-2 rounded bg-[#07090D] border border-neutral-800/60">
-          <div className="text-[10px] text-neutral-500">YOLOV8 PHONE AI</div>
+          <div className="text-[10px] text-neutral-500">STREAM RATE</div>
           <div className="text-cyan-400 font-bold mt-0.5 text-[11px]">
-            {phoneModelReady ? "READY (CLASS 67)" : "INITIALIZING..."}
+            {cameraActive ? "30 FPS // ACTIVE" : "STANDBY (30 FPS)"}
           </div>
         </div>
       </div>

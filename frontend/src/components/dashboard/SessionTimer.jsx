@@ -160,7 +160,11 @@ export const SessionTimer = ({
   };
 
   const minutesStudied = Math.max(1, Math.round((totalTime - timeLeft) / 60));
-  const efficiency = Math.max(55, Math.round(100 - distractions * 4.5));
+  // Under 7 distractions is evaluated as really good & highly focused:
+  const isReallyGood = distractions < 7;
+  const efficiency = isReallyGood
+    ? Math.max(90, Math.round(99 - distractions * 1.3))
+    : Math.max(45, Math.round(90 - (distractions - 6) * 4.5));
 
   return (
     <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-6 flex flex-col items-center justify-between relative overflow-hidden">
@@ -321,11 +325,18 @@ export const SessionTimer = ({
               </div>
             </div>
 
-            <div className="p-3.5 rounded-lg bg-[#07090D] border border-neutral-800/80 text-xs font-mono text-neutral-400 space-y-1">
-              <div className="text-white font-bold flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-cyan-400" /> Daily Streak Maintained!
+            <div className="p-3.5 rounded-lg bg-[#07090D] border border-neutral-800/80 text-xs font-mono space-y-1">
+              <div className={isReallyGood ? "text-emerald-400 font-bold flex items-center gap-1.5" : "text-amber-400 font-bold flex items-center gap-1.5"}>
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                {isReallyGood
+                  ? `Really Good Focus! (${distractions} distraction${distractions === 1 ? "" : "s"} < 7)`
+                  : `Sprint Complete (${distractions} distractions logged)`}
               </div>
-              <div>Telemetry event synced to local SQLite and PostgreSQL audit trail.</div>
+              <div className="text-neutral-400">
+                {isReallyGood
+                  ? "Outstanding cognitive discipline. You stayed locked on target throughout the sprint!"
+                  : "Distraction threshold was exceeded. Consider placing your phone out of reach for the next round."}
+              </div>
             </div>
 
             <button

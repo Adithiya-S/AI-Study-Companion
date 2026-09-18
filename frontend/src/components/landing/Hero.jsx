@@ -15,7 +15,7 @@ export const Hero = ({ onOpenAuth, onOpenDashboard }) => {
     gazeX: 0.02,
     gazeY: -0.01,
     distractionCount: 0,
-    fps: 59.8,
+    fps: 29.8,
   });
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export const Hero = ({ onOpenAuth, onOpenDashboard }) => {
         gazeX: +(Math.sin(Date.now() / 1500) * 0.06).toFixed(2),
         gazeY: +(Math.cos(Date.now() / 2000) * 0.04).toFixed(2),
         distractionCount: prev.distractionCount,
-        fps: +(59.2 + Math.random() * 0.9).toFixed(1),
+        fps: +(29.2 + Math.random() * 0.9).toFixed(1),
       }));
     }, 800);
     return () => clearInterval(interval);
@@ -51,7 +51,7 @@ export const Hero = ({ onOpenAuth, onOpenDashboard }) => {
             </span>
             <span>SYSTEM STATE: OPTIMAL FOCUS TELEMETRY</span>
             <span className="text-neutral-600">|</span>
-            <span className="text-cyan-400 font-semibold">NO VIBECODED FLUFF</span>
+            <span className="text-cyan-400 font-semibold">ZERO DISTRACTION PROTOCOL</span>
           </div>
         </motion.div>
 
@@ -65,7 +65,7 @@ export const Hero = ({ onOpenAuth, onOpenDashboard }) => {
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white font-sans">
             DEEP FOCUS THROUGH{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-cyan-300">
-              BIOMETRIC PRECISION
+              INTELLIGENT EYE TRACKING
             </span>
           </h1>
 
@@ -121,7 +121,7 @@ export const Hero = ({ onOpenAuth, onOpenDashboard }) => {
                     AURA_CORE_DAEMON // PID: 8044 // OPENCV_WEBCAM_NODE
                   </span>
                 </div>
-                <GlowBadge status="active">TELEMETRY STREAM: 60 FPS</GlowBadge>
+                <GlowBadge status="active">TELEMETRY STREAM: 30 FPS</GlowBadge>
               </div>
 
               {/* Grid: Left Simulated Camera Wireframe, Right Telemetry Matrix */}

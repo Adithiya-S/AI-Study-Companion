@@ -302,10 +302,10 @@ export const AnalyticsTab = ({ user, refreshKey }) => {
                       </span>
                     </td>
                     <td className="py-3 text-neutral-400">
-                      {s.distractions === 0 ? (
-                        <span className="text-emerald-400">0 (Clean)</span>
+                      {s.distractions < 7 ? (
+                        <span className="text-emerald-400 font-semibold">{s.distractions} (Focused &lt; 7)</span>
                       ) : (
-                        <span className="text-amber-400">{s.distractions} alerts</span>
+                        <span className="text-amber-400 font-semibold">{s.distractions} alerts</span>
                       )}
                     </td>
                   </tr>
