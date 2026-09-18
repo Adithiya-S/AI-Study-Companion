@@ -403,26 +403,20 @@ class FocusTracker:
                     class_id = int(box.cls[0])
                     confidence = float(box.conf[0])
                     
-                    # Detect cell phones (COCO class 67) or remote controls (COCO class 65)
+                    # Detect cell phones (COCO class 67) or handheld remotes (COCO class 65)
                     is_cell_phone = class_id == self.PHONE_CLASS_ID
                     is_remote = class_id == 65
                     
-                    if (is_cell_phone and confidence >= self.PHONE_CONFIDENCE_THRESHOLD) or (is_remote and confidence >= 0.40):
+                    if is_cell_phone and confidence >= 0.18:
                         phone_detected = True
                         max_confidence = max(max_confidence, confidence)
-                        
-                        # Get bounding box coordinates
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                         detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone'))
-                    
-                    # Secondary heuristic: partially visible phone in face/upper-body area
-                    elif is_cell_phone and confidence >= 0.15:
+                    elif is_remote and confidence >= 0.35:
+                        phone_detected = True
+                        max_confidence = max(max_confidence, confidence)
                         x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
-                        box_center_y = (y1 + y2) / 2
-                        if face_area_top < box_center_y < face_area_bottom:
-                            phone_detected = True
-                            max_confidence = max(max_confidence, confidence)
-                            detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone_partial'))
+                        detection_boxes.append((int(x1), int(y1), int(x2), int(y2), confidence, 'phone_remote'))
             
             return (phone_detected, max_confidence, detection_boxes if detection_boxes else None)
             

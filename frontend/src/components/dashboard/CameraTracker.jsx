@@ -554,19 +554,27 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
 
             if (res.ok) {
               const data = await res.json();
-              if (data.phone_detected && data.boxes && data.boxes.length > 0) {
-                const b = data.boxes[0];
-                const scaleX = 640 / offscreenW;
-                const scaleY = 360 / offscreenH;
-                detectedPhoneBoxRef.current = {
-                  bbox: [
-                    b.x1 * scaleX,
-                    b.y1 * scaleY,
-                    (b.x2 - b.x1) * scaleX,
-                    (b.y2 - b.y1) * scaleY,
-                  ],
-                  score: data.confidence,
-                };
+              if (data.phone_detected) {
+                if (data.boxes && data.boxes.length > 0) {
+                  const b = data.boxes[0];
+                  const scaleX = 640 / offscreenW;
+                  const scaleY = 360 / offscreenH;
+                  detectedPhoneBoxRef.current = {
+                    bbox: [
+                      b.x1 * scaleX,
+                      b.y1 * scaleY,
+                      Math.max(40, (b.x2 - b.x1) * scaleX),
+                      Math.max(40, (b.y2 - b.y1) * scaleY),
+                    ],
+                    score: data.confidence,
+                  };
+                } else {
+                  // Fallback centered bounding box
+                  detectedPhoneBoxRef.current = {
+                    bbox: [200, 180, 240, 150],
+                    score: data.confidence || 0.8,
+                  };
+                }
               } else {
                 detectedPhoneBoxRef.current = null;
               }

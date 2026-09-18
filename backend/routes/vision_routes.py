@@ -83,10 +83,14 @@ def detect_phone_frame(payload: FramePayload):
                     "type": str(b[5]),
                 })
 
+        if phone_detected:
+            print(f"📱 [YOLO] Phone detected! Conf={confidence:.2f}, Boxes={len(formatted_boxes)}")
+
         return {
             "phone_detected": phone_detected,
             "confidence": round(confidence, 3),
             "boxes": formatted_boxes,
         }
     except Exception as e:
+        print(f"❌ [VISION ERROR] Inference failed: {e}")
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
