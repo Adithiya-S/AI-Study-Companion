@@ -79,7 +79,15 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 def get_user_stats(user_id: str, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "id": user_id,
+            "name": "Student",
+            "email": "",
+            "totalHours": 0.0,
+            "sessions": 0,
+            "avgScore": 100.0,
+            "focusStreak": "0 Days",
+        }
 
     sessions = db.query(StudySession).filter(StudySession.user_id == user_id).all()
     sessions_count = len(sessions)
