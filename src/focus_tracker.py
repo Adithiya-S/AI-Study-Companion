@@ -1,7 +1,10 @@
-"""
-Focus Tracker Module - Eye tracking using MediaPipe and OpenCV
-Compatible with Python 3.8-3.12
-"""
+import os
+# Configure low-memory footprint for single-core / 512MB RAM cloud environments
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("YOLO_CONFIG_DIR", "/tmp/Ultralytics")
+os.environ.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
 
 import cv2
 import mediapipe as mp
@@ -9,6 +12,18 @@ import numpy as np
 import time
 from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Callable
+
+# PyTorch thread and memory tuning
+try:
+    import torch
+    torch.set_num_threads(1)
+    if hasattr(torch, "set_num_interop_threads"):
+        try:
+            torch.set_num_interop_threads(1)
+        except RuntimeError:
+            pass
+except Exception:
+    pass
 
 # Try to import YOLO for phone detection
 try:
@@ -21,8 +36,8 @@ except ImportError:
 class FocusTracker:
     """Advanced focus tracking using MediaPipe face mesh and eye detection."""
     
-    def __init__(self):
-        # MediaPipe setup (optional fallback; web app handles face mesh client-side)
+    def __init__(self, load_mediapipe: bool = False):
+        # MediaPipe setup (lazy-loaded: web app runs MediaPipe face mesh client-side in browser)
         self.mp_face_mesh = None
         self.mp_drawing = None
         self.mp_drawing_styles = None
@@ -31,6 +46,26 @@ class FocusTracker:
         self.hands = None
         self.hand_detection_enabled = False
 
+        if load_mediapipe:
+            self._init_mediapipe()
+        
+        # YOLO phone detection setup
+        self.phone_detection_enabled = False
+        self.yolo_model = None
+        if YOLO_AVAILABLE:
+            try:
+                # Load YOLOv8 nano model (lightweight and fast)
+                self.yolo_model = YOLO('yolov8n.pt')
+                self.phone_detection_enabled = True
+                print("Phone detection enabled (YOLOv8)")
+            except Exception as e:
+                print(f"Warning: Could not load YOLO model: {e}")
+                self.phone_detection_enabled = False
+
+    def _init_mediapipe(self):
+        """Lazy load MediaPipe models on-demand for desktop/GUI mode."""
+        if self.face_mesh is not None:
+            return
         try:
             if hasattr(mp, "solutions") and hasattr(mp.solutions, "face_mesh"):
                 self.mp_face_mesh = mp.solutions.face_mesh
@@ -52,21 +87,7 @@ class FocusTracker:
                 )
                 self.hand_detection_enabled = True
         except Exception as e:
-            # Non-fatal: Web app runs MediaPipe face mesh client-side in the browser
-            print(f"Note: Backend MediaPipe face mesh not loaded ({e}). Browser client-side mesh will be used.")
-        
-        # YOLO phone detection setup
-        self.phone_detection_enabled = False
-        self.yolo_model = None
-        if YOLO_AVAILABLE:
-            try:
-                # Load YOLOv8 nano model (lightweight and fast)
-                self.yolo_model = YOLO('yolov8n.pt')
-                self.phone_detection_enabled = True
-                print("Phone detection enabled (YOLOv8)")
-            except Exception as e:
-                print(f"Warning: Could not load YOLO model: {e}")
-                self.phone_detection_enabled = False
+            print(f"Note: Backend MediaPipe not loaded ({e}).")
         
         # Phone detection parameters
         self.PHONE_CLASS_ID = 67  # COCO dataset class ID for cell phone

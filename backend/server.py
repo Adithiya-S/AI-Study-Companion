@@ -25,17 +25,6 @@ from .routes.vision_routes import router as vision_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    # Pre-warm YOLOv8 model in background so first request is instant
-    try:
-        from .routes.vision_routes import get_tracker
-        tracker = get_tracker()
-        if tracker.phone_detection_enabled and tracker.yolo_model:
-            import numpy as np
-            dummy = np.zeros((180, 320, 3), dtype=np.uint8)
-            tracker.detect_phone(dummy)
-            print("YOLOv8 phone detection model warmed up and ready.")
-    except Exception as e:
-        print(f"YOLOv8 warm-up note: {e}")
     yield
 
 

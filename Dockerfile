@@ -1,11 +1,18 @@
 # Multi-stage production container for FastAPI + YOLOv8 + OpenCV
 FROM python:3.11-slim-bookworm
 
-# Avoid interactive prompts & configure Python
+# Avoid interactive prompts & configure Python for low-memory cloud container
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PORT=8000
+    PORT=8000 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    VECLIB_MAXIMUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1 \
+    YOLO_CONFIG_DIR=/tmp/Ultralytics \
+    MPLCONFIGDIR=/tmp/matplotlib
 
 WORKDIR /app
 

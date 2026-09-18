@@ -232,8 +232,8 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
     const score = status === "FOCUSED"
       ? baseScore
       : status === "PHONE_DETECTED"
-      ? Math.max(40, baseScore - 20)
-      : Math.max(50, baseScore - 15);
+        ? Math.max(40, baseScore - 20)
+        : Math.max(50, baseScore - 15);
 
     const shouldUpdate =
       status !== lastReportedStatusRef.current ||
@@ -656,11 +656,10 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           <button
             onClick={toggleCamera}
             title={cameraEnabled ? "Turn camera OFF" : "Turn camera ON"}
-            className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors flex items-center gap-1 cursor-pointer ${
-              cameraEnabled
+            className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors flex items-center gap-1 cursor-pointer ${cameraEnabled
                 ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 font-bold"
                 : "bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-white"
-            }`}
+              }`}
           >
             {cameraEnabled ? <CameraIcon className="w-3 h-3 text-emerald-400" /> : <CameraOff className="w-3 h-3 text-neutral-400" />}
             CAMERA {cameraEnabled ? "ON" : "OFF"}
@@ -668,11 +667,10 @@ export const CameraTracker = ({ onDistractionUpdate, onFocusUpdate, sensitivity 
           <button
             onClick={() => setShowMesh(!showMesh)}
             title="Toggle Face Mesh Overlay"
-            className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors cursor-pointer ${
-              showMesh
+            className={`text-[10px] font-mono px-2 py-1 rounded border transition-colors cursor-pointer ${showMesh
                 ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30 font-bold"
                 : "bg-neutral-800 text-neutral-400 border-neutral-700"
-            }`}
+              }`}
           >
             HUD {showMesh ? "ON" : "OFF"}
           </button>
